@@ -3,8 +3,8 @@
 """
   MAVProxy message console, implemented in a child process
 """
-import multiprocessing, threading
-import textconsole, sys, time
+import multiprocessing
+import time
 
 class HorizonIndicator():
     '''
@@ -12,17 +12,18 @@ class HorizonIndicator():
     '''
     def __init__(self,title='MAVProxy: Horizon Indicator'):
         self.title  = title
+        # Create Pipe to send attitude information from module to UI
+        self.child_pipe_recv,self.parent_pipe_send = multiprocessing.Pipe(duplex=False)
         self.close_event = multiprocessing.Event()
         self.close_event.clear()
         self.child = multiprocessing.Process(target=self.child_task)
         self.child.start()
-        #t = threading.Thread()
-        #t.daemon = True
-        #t.start()
+        self.child_pipe_recv.close()
 
     def child_task(self):
         '''child process - this holds all the GUI elements'''
-        import wx_processguard
+        self.parent_pipe_send.close()
+        
         from wx_loader import wx
         from wxhorizon_ui import HorizonFrame
         # Create wx application
@@ -31,7 +32,6 @@ class HorizonIndicator():
         app.frame.SetDoubleBuffered(True)
         app.frame.Show()
         app.MainLoop()
-
 
     def close(self):
         '''close the console'''

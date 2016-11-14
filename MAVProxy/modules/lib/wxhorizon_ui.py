@@ -1,11 +1,11 @@
 import time
 import os
 import mp_menu
-from wxconsole_util import Value, Text
+from wxhorizon_util import Attitude
 from wx_loader import wx
 
 class HorizonFrame(wx.Frame):
-    """ The main frame of the console"""
+    """ The main frame of the horizon indicator."""
 
     def __init__(self, state, title):
         self.state = state
@@ -48,6 +48,11 @@ class HorizonFrame(wx.Frame):
             self.timer.Stop()
             self.Destroy()
             return
+        # Get attitude information
+        while state.child_pipe_recv.poll():
+            obj = state.child_pipe_recv.recv()
+            if isinstance(obj,Attitude):
+                self.pitch = obj.pitch
    
         self.Refresh()
         self.Update()
