@@ -24,7 +24,6 @@ class HorizonModule(mp_module.MPModule):
         if msg.get_type() == 'ATTITUDE':
             # Send attitude information down pipe
             self.mpstate.horizonIndicator.parent_pipe_send.send(Attitude(msg))
-            print msg.pitch
 
 def init(mpstate):
     '''initialise module'''
