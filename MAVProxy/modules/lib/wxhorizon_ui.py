@@ -15,7 +15,7 @@ class HorizonFrame(wx.Frame):
     def __init__(self, state, title):
         self.state = state
         # Create Frame and Panel(s)
-        wx.Frame.__init__(self, None, title=title, size=(400,400))
+        wx.Frame.__init__(self, None, title=title)
         state.frame = self
 
         # Initialisation
@@ -47,17 +47,16 @@ class HorizonFrame(wx.Frame):
         self.figure = Figure()
         self.axes = self.figure.add_subplot(111)
         self.canvas = FigureCanvas(self,-1,self.figure)
+        self.canvas.SetSize(wx.Size(300,300))
         self.axes.axis('off')
         self.figure.subplots_adjust(left=0,right=1,top=1,bottom=0)
         self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(self.canvas,1,wx.LEFT|wx.TOP|wx.GROW)
-        self.SetSizer(self.sizer)
+        self.sizer.Add(self.canvas,1,wx.EXPAND,wx.ALL)
+        self.SetSizerAndFit(self.sizer)
         self.Fit()
-        
+
         # Fix Axes - vertical is of length 2, horizontal keeps the same lengthscale
-        ratio = self.GetSize()[0]
-        self.axes.set_xlim(-1,1)
-        self.axes.set_ylim(-1,1)
+        self.rescaleX()
         
         # Horizon setup
         # Sky Polygon
@@ -68,24 +67,29 @@ class HorizonFrame(wx.Frame):
         vertsBot = [[-1,0],[-1,-1],[1,-1],[1,0],[-1,0]]
         self.botPolygon = Polygon(vertsBot,facecolor='brown',edgecolor='none')
         self.axes.add_patch(self.botPolygon)
-        
-  
+        # Markers
+        self.axes.plot([-1,-1,1,1,0],[-1,1,1,-1,0],'ro')
         
         # Show Frame
         self.Show(True)
         self.pending = []
         
         
+    def rescaleX(self):
+        '''Rescales the horizontal axes to make the lengthscales equal.'''
+        self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
+        self.axes.set_xlim(-self.ratio,self.ratio)
+        self.axes.set_ylim(-1,1)
+        
     def calcHorizonPoints(self):
         '''Updates the verticies of the patches for the ground and sky.'''
         ydiff = math.sin(math.radians(self.roll))
         # Sky Polygon
-        vertsTop = [(-1,ydiff),(-1,1),(1,1),(1,-ydiff),(-1,ydiff)]       
+        vertsTop = [(-self.ratio,ydiff),(-self.ratio,1),(self.ratio,1),(self.ratio,-ydiff),(-self.ratio,ydiff)]       
         self.topPolygon.set_xy(vertsTop)
         # Ground Polygon
-        vertsBot = [(-1,ydiff),(-1,-1),(1,-1),(1,-ydiff),(-1,ydiff)]       
+        vertsBot = [(-self.ratio,ydiff),(-self.ratio,-1),(self.ratio,-1),(self.ratio,-ydiff),(-self.ratio,ydiff)]       
         self.botPolygon.set_xy(vertsBot)       
-        
         
     def updateAttitudeText(self):
         'Updates the displayed attitude Text'
@@ -94,6 +98,17 @@ class HorizonFrame(wx.Frame):
         #self.yawText.SetLabel('Yaw: %.2f' % self.yaw)
 
     def on_idle(self, event):
+        # Fix Window Scales
+        #self.Fit()
+        self.rescaleX()
+        
+        # Recalculate Horizon Polygons
+        self.calcHorizonPoints()
+        
+        # Update Matplotlib Plot
+        self.canvas.draw()
+        self.canvas.Refresh()
+        
         time.sleep(0.05)
  
     def on_timer(self, event):
@@ -113,11 +128,16 @@ class HorizonFrame(wx.Frame):
                 
                 # Update Displayed Text
                 self.updateAttitudeText()
+                
+                # Recalculate Horizon Polygons
                 self.calcHorizonPoints()
                 
                 # Update Matplotlib Plot
                 self.canvas.draw()
                 self.canvas.Refresh()
+                
+
+               
                 
    
         self.Refresh()
