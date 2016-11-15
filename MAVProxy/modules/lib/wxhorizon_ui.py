@@ -3,31 +3,27 @@ from wxhorizon_util import Attitude
 from wx_loader import wx
 import math
 
+import matplotlib
+matplotlib.use('wxAgg')
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.figure import Figure
+from matplotlib.pyplot import Polygon
+
 class HorizonFrame(wx.Frame):
     """ The main frame of the horizon indicator."""
 
     def __init__(self, state, title):
         self.state = state
-        # Create Frame and Panel
+        # Create Frame and Panel(s)
         wx.Frame.__init__(self, None, title=title, size=(400,400))
-        self.panel = wx.Panel(self)
         state.frame = self
 
-        # Create vbox and panel
-        self.vbox = wx.BoxSizer(wx.VERTICAL)
-        self.panel.SetSizer(self.vbox)
+        # Initialisation
+        self.initData()
+        self.initUI()
 
-        # Create Event Timer
-        self.timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.on_timer, self.timer)
-        self.timer.Start(100)
-        self.Bind(wx.EVT_IDLE, self.on_idle)
 
-        # Test Button
-        self.btn = wx.Button(self.panel,-1,'Display Pitch')
-        self.vbox.Add(self.btn,0,wx.ALIGN_CENTER)
-        self.Bind(wx.EVT_BUTTON,self.OnButtonClicked)
-
+    def initData(self):
         # Initialise Attitude
         self.pitch = 0  # Degrees
         self.roll = 0   # Degrees
@@ -35,52 +31,67 @@ class HorizonFrame(wx.Frame):
         
         # History Values
         self.oldRoll = 0 # Degrees
-        
-        # Attitude Text
-        self.pitchText = wx.StaticText(self.panel,pos=(0,340),label='Pitch: 0.0',style=wx.ALIGN_LEFT)
-        self.rollText = wx.StaticText(self.panel,pos=(0,360),label='Roll: 0.0',style=wx.ALIGN_LEFT)
-        self.yawText = wx.StaticText(self.panel,1,pos=(0,380),label='Yaw: 0.0',style=wx.ALIGN_LEFT)
+    
 
-        # Add Roll Line
-        l = 200; # px
-        xc = 200
-        yc = 200
-        def on_paint(event):
-            # Create Drawing Canvasgit st
-            dc = wx.PaintDC(self.panel)
-            dc.Clear()
-            # Draw Roll Line
-            dc.SetPen(wx.Pen(wx.BLACK,4))
-            x1 = xc-((l/2.0)*math.cos(math.radians(self.roll)))
-            y1 = yc-((l/2.0)*math.sin(math.radians(self.roll)))
-            x2 = xc+((l/2.0)*math.cos(math.radians(self.roll)))
-            y2 = yc+((l/2.0)*math.sin(math.radians(self.roll)))
-            dc.DrawLine(x1,y1,x2,y2)
-            # Draw Roll Lag Arc
-            x1o = xc-((l/2.0)*math.cos(math.radians(self.oldRoll)))
-            y1o = yc-((l/2.0)*math.sin(math.radians(self.oldRoll)))
-            x2o = xc+((l/2.0)*math.cos(math.radians(self.oldRoll)))
-            y2o = yc+((l/2.0)*math.sin(math.radians(self.oldRoll)))
-            
-            dc.DrawLine(x1,y1,x2,y2)
-            #dc.DrawArc(x1,y1,x1o,y1o,xc,yc)
-            #dc.DrawArc(x2,y2,x2o,y2o,xc,yc)
+    def initUI(self):
+        # Create Event Timer
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.on_timer, self.timer)
+        self.timer.Start(100)
+        self.Bind(wx.EVT_IDLE, self.on_idle)
+
+        # Create Panel
+        self.panel = wx.Panel(self)
         
-        self.panel.Bind(wx.EVT_PAINT,on_paint)
+        # Create Matplotlib Panel
+        self.figure = Figure()
+        self.axes = self.figure.add_subplot(111)
+        self.canvas = FigureCanvas(self,-1,self.figure)
+        self.axes.axis('off')
+        self.figure.subplots_adjust(left=0,right=1,top=1,bottom=0)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.Add(self.canvas,1,wx.LEFT|wx.TOP|wx.GROW)
+        self.SetSizer(self.sizer)
+        self.Fit()
         
-        # Show Window
+        # Fix Axes - vertical is of length 2, horizontal keeps the same lengthscale
+        ratio = self.GetSize()[0]
+        self.axes.set_xlim(-1,1)
+        self.axes.set_ylim(-1,1)
+        
+        # Horizon setup
+        # Sky Polygon
+        vertsTop = [[-1,0],[-1,1],[1,1],[1,0],[-1,0]]
+        self.topPolygon = Polygon(vertsTop,facecolor='cyan',edgecolor='none')
+        self.axes.add_patch(self.topPolygon)
+        # Ground Polygon
+        vertsBot = [[-1,0],[-1,-1],[1,-1],[1,0],[-1,0]]
+        self.botPolygon = Polygon(vertsBot,facecolor='brown',edgecolor='none')
+        self.axes.add_patch(self.botPolygon)
+        
+  
+        
+        # Show Frame
         self.Show(True)
         self.pending = []
-
-    def OnButtonClicked(self,e):
-        print 'Pitch: %f' % self.pitch
-
+        
+        
+    def calcHorizonPoints(self):
+        '''Updates the verticies of the patches for the ground and sky.'''
+        ydiff = math.sin(math.radians(self.roll))
+        # Sky Polygon
+        vertsTop = [(-1,ydiff),(-1,1),(1,1),(1,-ydiff),(-1,ydiff)]       
+        self.topPolygon.set_xy(vertsTop)
+        # Ground Polygon
+        vertsBot = [(-1,ydiff),(-1,-1),(1,-1),(1,-ydiff),(-1,ydiff)]       
+        self.botPolygon.set_xy(vertsBot)       
+        
         
     def updateAttitudeText(self):
         'Updates the displayed attitude Text'
-        self.pitchText.SetLabel('Pitch: %.2f' % self.pitch)
-        self.rollText.SetLabel('Roll: %.2f' % self.roll)
-        self.yawText.SetLabel('Yaw: %.2f' % self.yaw)
+        #self.pitchText.SetLabel('Pitch: %.2f' % self.pitch)
+        #self.rollText.SetLabel('Roll: %.2f' % self.roll)
+        #self.yawText.SetLabel('Yaw: %.2f' % self.yaw)
 
     def on_idle(self, event):
         time.sleep(0.05)
@@ -102,6 +113,11 @@ class HorizonFrame(wx.Frame):
                 
                 # Update Displayed Text
                 self.updateAttitudeText()
+                self.calcHorizonPoints()
+                
+                # Update Matplotlib Plot
+                self.canvas.draw()
+                self.canvas.Refresh()
                 
    
         self.Refresh()
