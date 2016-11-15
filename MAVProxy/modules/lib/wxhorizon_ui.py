@@ -70,6 +70,15 @@ class HorizonFrame(wx.Frame):
         # Markers
         self.axes.plot([-1,-1,1,1,0],[-1,1,1,-1,0],'ro')
         
+        # Add Roll, Pitch, Yaw Text
+        self.vertSize = 0.09
+        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+        self.fontSize = self.vertSize*(ypx/2.0)
+        leftPos = self.axes.get_xlim()[0]
+        self.rollText = self.axes.text(leftPos+(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0),'Roll:   %.2f' % self.roll,color='w',size=self.fontSize)
+        self.pitchText = self.axes.text(leftPos+(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0),'Pitch: %.2f' % self.pitch,color='w',size=self.fontSize)
+        self.yawText = self.axes.text(leftPos+(self.vertSize/10.0),-0.97,'Yaw:   %.2f' % self.yaw,color='w',size=self.fontSize)
+        
         # Show Frame
         self.Show(True)
         self.pending = []
@@ -93,21 +102,40 @@ class HorizonFrame(wx.Frame):
         
     def updateAttitudeText(self):
         'Updates the displayed attitude Text'
-        #self.pitchText.SetLabel('Pitch: %.2f' % self.pitch)
-        #self.rollText.SetLabel('Roll: %.2f' % self.roll)
-        #self.yawText.SetLabel('Yaw: %.2f' % self.yaw)
+        self.rollText.set_text('Roll:   %.2f' % self.roll)
+        self.pitchText.set_text('Pitch: %.2f' % self.pitch)
+        self.yawText.set_text('Yaw:   %.2f' % self.yaw)
+
+    def updateRPYLocations(self):
+        '''Update the locations of rol, pitch, yaw text.'''
+        leftPos = self.axes.get_xlim()[0]
+        # Locations
+        self.rollText.set_position((leftPos+(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0)))
+        self.pitchText.set_position((leftPos+(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0)))
+        self.yawText.set_position((leftPos+(self.vertSize/10.0),-0.97))
+        # Font Size
+        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+        self.fontSize = self.vertSize*(ypx/2.0)
+        self.rollText.set_size(self.fontSize)
+        self.pitchText.set_size(self.fontSize)
+        self.yawText.set_size(self.fontSize)
 
     def on_idle(self, event):
-        # Fix Window Scales
-        #self.Fit()
+        # Fix Window Scales 
         self.rescaleX()
         
         # Recalculate Horizon Polygons
         self.calcHorizonPoints()
         
+
+        
+        # Update Roll, Pitch, Yaw Text Locations
+        self.updateRPYLocations()
+        
         # Update Matplotlib Plot
         self.canvas.draw()
         self.canvas.Refresh()
+        
         
         time.sleep(0.05)
  
