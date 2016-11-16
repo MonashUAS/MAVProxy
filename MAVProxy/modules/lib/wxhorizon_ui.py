@@ -114,7 +114,7 @@ class HorizonFrame(wx.Frame):
         
     def adjustPitchmarkers(self):
         '''Adjusts the location and orientation of pitch markers.'''
-        rollRotate = mpl.transforms.Affine2D().rotate_deg(-self.roll)+self.axes.transData
+        rollRotate = mpl.transforms.Affine2D().rotate_deg(self.roll)+self.axes.transData
         for patch in self.pitchPatches:
             patch.set_transform(rollRotate)
         # Adjust Text Size and rotation
@@ -137,7 +137,7 @@ class HorizonFrame(wx.Frame):
     def calcHorizonPoints(self):
         '''Updates the verticies of the patches for the ground and sky.'''
         self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
-        ydiff = math.tan(math.radians(self.roll))*float(self.ratio)
+        ydiff = math.tan(math.radians(-self.roll))*float(self.ratio)
         #pitchdiff = 
         # Sky Polygon
         vertsTop = [(-self.ratio,ydiff),(-self.ratio,1),(self.ratio,1),(self.ratio,-ydiff),(-self.ratio,ydiff)]       
