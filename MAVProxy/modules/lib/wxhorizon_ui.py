@@ -37,11 +37,12 @@ class HorizonFrame(wx.Frame):
     
 
     def initUI(self):
-        # Create Event Timer
+        # Create Event Timer and Bindings
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.timer)
         self.timer.Start(100)
         self.Bind(wx.EVT_IDLE, self.on_idle)
+        self.Bind(wx.EVT_CHAR_HOOK,self.on_KeyPress)
 
         # Create Panel
         self.panel = wx.Panel(self)
@@ -80,6 +81,7 @@ class HorizonFrame(wx.Frame):
         self.axes.add_patch(patches.Circle((0,0),radius=self.thick,facecolor='orange',edgecolor='none',zorder=3))
         
         # Pitch Markers
+        self.dist10deg = 0.2 # Graph distance per 10 deg
         self.createPitchmMarkers()
         
         # Add Roll, Pitch, Yaw Text
@@ -95,29 +97,48 @@ class HorizonFrame(wx.Frame):
         self.Show(True)
         self.pending = []
         
+    def calcPitchMarkerWidth(self,i):
+        '''Calculates the width of a pitch marker.'''
+        if (i % 3) == 0:
+            if i == 0:
+                width = 1.5
+            else:
+                width = 0.9
+        else:
+            width = 0.6
+            
+        return width
+        
     def createPitchmMarkers(self):
         '''Creates the rectangle patches for the pitch indicators.'''
         self.pitchPatches = []
         # Major Lines (multiple of 10 deg)
-        for i in [-3,-2,-1,1,2,3]:
-            currPatch = patches.Rectangle((-0.45,0.3*i-(self.thick/2.0)),0.9,self.thick,facecolor='w',edgecolor='none')
+        for i in [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]:
+            width = self.calcPitchMarkerWidth(i)
+            currPatch = patches.Rectangle((-width/2.0,self.dist10deg*i-(self.thick/2.0)),width,self.thick,facecolor='w',edgecolor='none')
             self.axes.add_patch(currPatch)
             self.pitchPatches.append(currPatch)
         # Add Label for +-30 deg
         self.vertSize = 0.09
         ypx = self.figure.get_size_inches()[1]*self.figure.dpi
         self.fontSize = self.vertSize*(ypx/2.0)
-        self.right30 = self.axes.text(0.5,0.9,'30',color='w',size=self.fontSize,verticalalignment='center')
+        self.right30 = self.axes.text(0.5,3*self.dist10deg,'30',color='w',size=self.fontSize,verticalalignment='center')
         self.right30.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
-        self.left30 = self.axes.text(-0.5,0.9,'30',color='w',size=self.fontSize,verticalalignment='center',horizontalalignment='right')
+        self.left30 = self.axes.text(-0.5,3*self.dist10deg,'30',color='w',size=self.fontSize,verticalalignment='center',horizontalalignment='right')
         self.left30.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         
     def adjustPitchmarkers(self):
         '''Adjusts the location and orientation of pitch markers.'''
         rollRotate = mpl.transforms.Affine2D().rotate_deg(self.roll)+self.axes.transData
-        for patch in self.pitchPatches:
-            patch.set_transform(rollRotate)
+        j=0
+        for i in [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]:
+            width = self.calcPitchMarkerWidth(i)
+            self.pitchPatches[j].set_xy((-width/2.0,self.dist10deg*i-(self.thick/2.0)))
+            self.pitchPatches[j].set_transform(rollRotate)
+            j+=1
         # Adjust Text Size and rotation
+        self.right30.set_y(3*self.dist10deg)
+        self.left30.set_y(3*self.dist10deg)
         self.right30.set_size(self.fontSize)
         self.left30.set_size(self.fontSize)
         self.right30.set_rotation(self.roll)
@@ -138,12 +159,12 @@ class HorizonFrame(wx.Frame):
         '''Updates the verticies of the patches for the ground and sky.'''
         self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
         ydiff = math.tan(math.radians(-self.roll))*float(self.ratio)
-        #pitchdiff = 
+        pitchdiff = self.dist10deg*(self.pitch/10.0)
         # Sky Polygon
-        vertsTop = [(-self.ratio,ydiff),(-self.ratio,1),(self.ratio,1),(self.ratio,-ydiff),(-self.ratio,ydiff)]       
+        vertsTop = [(-self.ratio,ydiff-pitchdiff),(-self.ratio,1),(self.ratio,1),(self.ratio,-ydiff-pitchdiff),(-self.ratio,ydiff-pitchdiff)]       
         self.topPolygon.set_xy(vertsTop)
         # Ground Polygon
-        vertsBot = [(-self.ratio,ydiff),(-self.ratio,-1),(self.ratio,-1),(self.ratio,-ydiff),(-self.ratio,ydiff)]       
+        vertsBot = [(-self.ratio,ydiff-pitchdiff),(-self.ratio,-1),(self.ratio,-1),(self.ratio,-ydiff-pitchdiff),(-self.ratio,ydiff-pitchdiff)]       
         self.botPolygon.set_xy(vertsBot)       
         
     def updateAttitudeText(self):
@@ -214,9 +235,16 @@ class HorizonFrame(wx.Frame):
                 self.canvas.draw()
                 self.canvas.Refresh()
                 
-
-               
-                
-   
         self.Refresh()
         self.Update()
+                
+    def on_KeyPress(self,event):
+        if event.GetKeyCode() == wx.WXK_UP:
+            self.dist10deg += 0.1
+            print 'Dist per 10 deg: %.1f' % self.dist10deg      
+        elif event.GetKeyCode() == wx.WXK_DOWN:
+            self.dist10deg -= 0.1
+            if self.dist10deg < 0:
+                self.dist10deg = 0
+            print 'Dist per 10 deg: %.1f' % self.dist10deg      
+
