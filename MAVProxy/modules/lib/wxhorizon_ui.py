@@ -8,6 +8,9 @@ matplotlib.use('wxAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.pyplot import Polygon
+import matplotlib.patheffects as PathEffects
+from matplotlib import patches
+import matplotlib as mpl
 
 class HorizonFrame(wx.Frame):
     """ The main frame of the horizon indicator."""
@@ -58,7 +61,6 @@ class HorizonFrame(wx.Frame):
         # Fix Axes - vertical is of length 2, horizontal keeps the same lengthscale
         self.rescaleX()
         
-        # Horizon setup
         # Sky Polygon
         vertsTop = [[-1,0],[-1,1],[1,1],[1,0],[-1,0]]
         self.topPolygon = Polygon(vertsTop,facecolor='cyan',edgecolor='none')
@@ -67,8 +69,18 @@ class HorizonFrame(wx.Frame):
         vertsBot = [[-1,0],[-1,-1],[1,-1],[1,0],[-1,0]]
         self.botPolygon = Polygon(vertsBot,facecolor='brown',edgecolor='none')
         self.axes.add_patch(self.botPolygon)
+        
         # Markers
-        self.axes.plot([-1,-1,1,1,0],[-1,1,1,-1,0],'ro')
+        self.axes.plot([-1,-1,1,1],[-1,1,1,-1],'ro')
+        
+        # Center Pointer Marker
+        self.thick = 0.015
+        self.axes.add_patch(patches.Rectangle((-0.75,-self.thick),0.5,2.0*self.thick,facecolor='orange',zorder=3))
+        self.axes.add_patch(patches.Rectangle((0.25,-self.thick),0.5,2.0*self.thick,facecolor='orange',zorder=3))
+        self.axes.add_patch(patches.Circle((0,0),radius=self.thick,facecolor='orange',edgecolor='none',zorder=3))
+        
+        # Pitch Markers
+        self.createPitchmMarkers()
         
         # Add Roll, Pitch, Yaw Text
         self.vertSize = 0.09
@@ -83,6 +95,38 @@ class HorizonFrame(wx.Frame):
         self.Show(True)
         self.pending = []
         
+    def createPitchmMarkers(self):
+        '''Creates the rectangle patches for the pitch indicators.'''
+        self.pitchPatches = []
+        # Major Lines (multiple of 10 deg)
+        for i in [-3,-2,-1,1,2,3]:
+            currPatch = patches.Rectangle((-0.45,0.3*i-(self.thick/2.0)),0.9,self.thick,facecolor='w',edgecolor='none')
+            self.axes.add_patch(currPatch)
+            self.pitchPatches.append(currPatch)
+        # Add Label for +-30 deg
+        self.vertSize = 0.09
+        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+        self.fontSize = self.vertSize*(ypx/2.0)
+        self.right30 = self.axes.text(0.5,0.9,'30',color='w',size=self.fontSize,verticalalignment='center')
+        self.right30.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        self.left30 = self.axes.text(-0.5,0.9,'30',color='w',size=self.fontSize,verticalalignment='center',horizontalalignment='right')
+        self.left30.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        
+    def adjustPitchmarkers(self):
+        '''Adjusts the location and orientation of pitch markers.'''
+        rollRotate = mpl.transforms.Affine2D().rotate_deg(-self.roll)+self.axes.transData
+        for patch in self.pitchPatches:
+            patch.set_transform(rollRotate)
+        # Adjust Text Size and rotation
+        self.right30.set_size(self.fontSize)
+        self.left30.set_size(self.fontSize)
+        self.right30.set_rotation(-self.roll)
+        self.left30.set_rotation(-self.roll)
+        self.right30.set_transform(rollRotate)
+        self.left30.set_transform(rollRotate)
+
+        self.right30.set_verticalalignment('center')
+        self.left30.set_verticalalignment('center')
         
     def rescaleX(self):
         '''Rescales the horizontal axes to make the lengthscales equal.'''
@@ -94,6 +138,7 @@ class HorizonFrame(wx.Frame):
         '''Updates the verticies of the patches for the ground and sky.'''
         self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
         ydiff = math.tan(math.radians(self.roll))*float(self.ratio)
+        #pitchdiff = 
         # Sky Polygon
         vertsTop = [(-self.ratio,ydiff),(-self.ratio,1),(self.ratio,1),(self.ratio,-ydiff),(-self.ratio,ydiff)]       
         self.topPolygon.set_xy(vertsTop)
@@ -128,10 +173,11 @@ class HorizonFrame(wx.Frame):
         # Recalculate Horizon Polygons
         self.calcHorizonPoints()
         
-
-        
         # Update Roll, Pitch, Yaw Text Locations
         self.updateRPYLocations()
+        
+        # Update Pitch Markers
+        self.adjustPitchmarkers()
         
         # Update Matplotlib Plot
         self.canvas.draw()
@@ -160,6 +206,9 @@ class HorizonFrame(wx.Frame):
                 
                 # Recalculate Horizon Polygons
                 self.calcHorizonPoints()
+                
+                # Update Pitch Markers
+                self.adjustPitchmarkers()
                 
                 # Update Matplotlib Plot
                 self.canvas.draw()
