@@ -132,11 +132,12 @@ class HorizonFrame(wx.Frame):
         
     def adjustPitchmarkers(self):
         '''Adjusts the location and orientation of pitch markers.'''
-        rollRotate = mpl.transforms.Affine2D().rotate_deg(self.roll)+self.axes.transData
+        pitchdiff = self.dist10deg*(self.pitch/10.0)
+        rollRotate = mpl.transforms.Affine2D().rotate_deg_around(0.0,-pitchdiff,self.roll)+self.axes.transData
         j=0
         for i in [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]:
             width = self.calcPitchMarkerWidth(i)
-            self.pitchPatches[j].set_xy((-width/2.0,self.dist10deg*i-(self.thick/2.0)))
+            self.pitchPatches[j].set_xy((-width/2.0,self.dist10deg*i-(self.thick/2.0)-pitchdiff))
             self.pitchPatches[j].set_transform(rollRotate)
             j+=1
         # Adjust Text Size and rotation
