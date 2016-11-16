@@ -92,6 +92,9 @@ class HorizonFrame(wx.Frame):
         self.rollText = self.axes.text(leftPos+(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0),'Roll:   %.2f' % self.roll,color='w',size=self.fontSize)
         self.pitchText = self.axes.text(leftPos+(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0),'Pitch: %.2f' % self.pitch,color='w',size=self.fontSize)
         self.yawText = self.axes.text(leftPos+(self.vertSize/10.0),-0.97,'Yaw:   %.2f' % self.yaw,color='w',size=self.fontSize)
+        self.rollText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        self.pitchText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        self.yawText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         
         # Show Frame
         self.Show(True)
