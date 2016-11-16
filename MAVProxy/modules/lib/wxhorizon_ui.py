@@ -120,8 +120,8 @@ class HorizonFrame(wx.Frame):
         # Adjust Text Size and rotation
         self.right30.set_size(self.fontSize)
         self.left30.set_size(self.fontSize)
-        self.right30.set_rotation(-self.roll)
-        self.left30.set_rotation(-self.roll)
+        self.right30.set_rotation(self.roll)
+        self.left30.set_rotation(self.roll)
         self.right30.set_transform(rollRotate)
         self.left30.set_transform(rollRotate)
 
