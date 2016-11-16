@@ -92,7 +92,8 @@ class HorizonFrame(wx.Frame):
         
     def calcHorizonPoints(self):
         '''Updates the verticies of the patches for the ground and sky.'''
-        ydiff = math.sin(math.radians(self.roll))
+        self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
+        ydiff = math.tan(math.radians(self.roll))*float(self.ratio)
         # Sky Polygon
         vertsTop = [(-self.ratio,ydiff),(-self.ratio,1),(self.ratio,1),(self.ratio,-ydiff),(-self.ratio,ydiff)]       
         self.topPolygon.set_xy(vertsTop)
