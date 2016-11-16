@@ -43,6 +43,8 @@ If it doesn't install correctly the first time, run the above command again, thi
 module load horizon
 ```
 
+The distance between pitch marker lines can be changed by using the UP and DOWN arrow keys.
+
 ![Horizon Indicator (early stages)](/MAVProxy/modules/MUAS_data/horizonIndicator.png?raw=true "Horizon Indicator (early stages)")
 
 
