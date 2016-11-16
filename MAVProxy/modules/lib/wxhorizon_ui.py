@@ -116,7 +116,7 @@ class HorizonFrame(wx.Frame):
         '''Creates the rectangle patches for the pitch indicators.'''
         self.pitchPatches = []
         # Major Lines (multiple of 10 deg)
-        for i in [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]:
+        for i in [-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9]:
             width = self.calcPitchMarkerWidth(i)
             currPatch = patches.Rectangle((-width/2.0,self.dist10deg*i-(self.thick/2.0)),width,self.thick,facecolor='w',edgecolor='none')
             self.axes.add_patch(currPatch)
@@ -125,33 +125,38 @@ class HorizonFrame(wx.Frame):
         self.vertSize = 0.09
         ypx = self.figure.get_size_inches()[1]*self.figure.dpi
         self.fontSize = self.vertSize*(ypx/2.0)
-        self.right30 = self.axes.text(0.5,3*self.dist10deg,'30',color='w',size=self.fontSize,verticalalignment='center')
-        self.right30.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
-        self.left30 = self.axes.text(-0.5,3*self.dist10deg,'30',color='w',size=self.fontSize,verticalalignment='center',horizontalalignment='right')
-        self.left30.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        self.pitchLabelsLeft = []
+        self.pitchLabelsRight = []
+        i=0
+        for j in [-90,-60,-30,30,60,90]:
+            self.pitchLabelsLeft.append(self.axes.text(-0.55,(j/10.0)*self.dist10deg,str(j),color='w',size=self.fontSize,horizontalalignment='center',verticalalignment='center'))
+            self.pitchLabelsLeft[i].set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+            self.pitchLabelsRight.append(self.axes.text(0.55,(j/10.0)*self.dist10deg,str(j),color='w',size=self.fontSize,horizontalalignment='center',verticalalignment='center'))
+            self.pitchLabelsRight[i].set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+            i += 1
         
     def adjustPitchmarkers(self):
         '''Adjusts the location and orientation of pitch markers.'''
         pitchdiff = self.dist10deg*(self.pitch/10.0)
         rollRotate = mpl.transforms.Affine2D().rotate_deg_around(0.0,-pitchdiff,self.roll)+self.axes.transData
         j=0
-        for i in [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]:
+        for i in [-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9]:
             width = self.calcPitchMarkerWidth(i)
             self.pitchPatches[j].set_xy((-width/2.0,self.dist10deg*i-(self.thick/2.0)-pitchdiff))
             self.pitchPatches[j].set_transform(rollRotate)
             j+=1
         # Adjust Text Size and rotation
-        self.right30.set_y(3*self.dist10deg)
-        self.left30.set_y(3*self.dist10deg)
-        self.right30.set_size(self.fontSize)
-        self.left30.set_size(self.fontSize)
-        self.right30.set_rotation(self.roll)
-        self.left30.set_rotation(self.roll)
-        self.right30.set_transform(rollRotate)
-        self.left30.set_transform(rollRotate)
-
-        self.right30.set_verticalalignment('center')
-        self.left30.set_verticalalignment('center')
+        i=0
+        for j in [-9,-6,-3,3,6,9]:
+                self.pitchLabelsLeft[i].set_y(j*self.dist10deg-pitchdiff)
+                self.pitchLabelsRight[i].set_y(j*self.dist10deg-pitchdiff)
+                self.pitchLabelsLeft[i].set_size(self.fontSize)
+                self.pitchLabelsRight[i].set_size(self.fontSize)
+                self.pitchLabelsLeft[i].set_rotation(self.roll)
+                self.pitchLabelsRight[i].set_rotation(self.roll)
+                self.pitchLabelsLeft[i].set_transform(rollRotate)
+                self.pitchLabelsRight[i].set_transform(rollRotate)
+                i += 1
         
     def rescaleX(self):
         '''Rescales the horizontal axes to make the lengthscales equal.'''
