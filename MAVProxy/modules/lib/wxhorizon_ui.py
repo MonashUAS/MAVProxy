@@ -1,9 +1,10 @@
 import time
-from wxhorizon_util import Attitude
+from wxhorizon_util import Attitude, VFR_HUD
 from wx_loader import wx
 import math
 
 import matplotlib
+from MAVProxy.modules.lib.wxhorizon_util import VFR_HUD
 matplotlib.use('wxAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -31,6 +32,9 @@ class HorizonFrame(wx.Frame):
         self.pitch = 0  # Degrees
         self.roll = 0   # Degrees
         self.yaw = 0    # Degrees
+        
+        # Initialise HUD Info
+        self.heading = 0 # 0-360
         
         # History Values
         self.oldRoll = 0 # Degrees
@@ -82,7 +86,7 @@ class HorizonFrame(wx.Frame):
         
         # Pitch Markers
         self.dist10deg = 0.2 # Graph distance per 10 deg
-        self.createPitchmMarkers()
+        self.createPitchMarkers()
         
         # Add Roll, Pitch, Yaw Text
         self.vertSize = 0.09
@@ -95,6 +99,11 @@ class HorizonFrame(wx.Frame):
         self.rollText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         self.pitchText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         self.yawText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        
+        # Create Heading Pointer
+        self.headingTri = patches.RegularPolygon((0.0,0.80),3,0.05,color='k')
+        self.axes.add_patch(self.headingTri)
+        self.headingText = self.axes.text(0.0,0.675,'0',color='k',size=self.fontSize,horizontalalignment='center',verticalalignment='center')
         
         # Show Frame
         self.Show(True)
@@ -112,7 +121,7 @@ class HorizonFrame(wx.Frame):
             
         return width
         
-    def createPitchmMarkers(self):
+    def createPitchMarkers(self):
         '''Creates the rectangle patches for the pitch indicators.'''
         self.pitchPatches = []
         # Major Lines (multiple of 10 deg)
@@ -195,6 +204,20 @@ class HorizonFrame(wx.Frame):
         self.rollText.set_size(self.fontSize)
         self.pitchText.set_size(self.fontSize)
         self.yawText.set_size(self.fontSize)
+        
+    def adjustHeadingPointer(self):
+        '''Adjust the position and orientation of
+        the north pointer.'''
+        self.headingText.set_text(str(self.heading))
+        self.headingText.set_size(self.fontSize) 
+        headingRotate = mpl.transforms.Affine2D().rotate_deg_around(0.0,0.0,-self.heading)+self.axes.transData
+        self.headingText.set_transform(headingRotate)
+        if (self.heading > 90) and (self.heading < 270):
+            headRot = self.heading-180
+        else:
+            headRot = self.heading
+        self.headingText.set_rotation(-headRot)
+        self.headingTri.set_transform(headingRotate)
 
     def on_idle(self, event):
         # Fix Window Scales 
@@ -208,6 +231,9 @@ class HorizonFrame(wx.Frame):
         
         # Update Pitch Markers
         self.adjustPitchmarkers()
+        
+        # Update North Pointer
+        self.adjustHeadingPointer()
         
         # Update Matplotlib Plot
         self.canvas.draw()
@@ -243,6 +269,12 @@ class HorizonFrame(wx.Frame):
                 # Update Matplotlib Plot
                 self.canvas.draw()
                 self.canvas.Refresh()
+            
+            if isinstance(obj,VFR_HUD):
+                self.heading = obj.heading
+                
+                # Update North Pointer
+                
                 
         self.Refresh()
         self.Update()
