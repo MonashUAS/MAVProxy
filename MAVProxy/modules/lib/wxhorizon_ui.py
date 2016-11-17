@@ -313,10 +313,15 @@ class HorizonFrame(wx.Frame):
     def createBatteryBar(self):
         '''Creates the bar to display current battery percentage.'''
         rightPos = self.axes.get_xlim()[1]
+        self.vertSize = 0.09
         self.batOutRec = patches.Rectangle((rightPos-(1.3+self.rOffset)*self.batWidth,1.0-(0.1+1.0+(2*0.075))*self.batHeight),self.batWidth*1.3,self.batHeight*1.15,facecolor='darkgrey',edgecolor='none')
         self.batInRec = patches.Rectangle((rightPos-(self.rOffset+1+0.15)*self.batWidth,1.0-(0.1+1+0.075)*self.batHeight),self.batWidth,self.batHeight,facecolor='lawngreen',edgecolor='none')
         self.batPerText = self.axes.text(rightPos - (self.rOffset+0.65)*self.batWidth,1-(0.1+1+(0.075+0.15))*self.batHeight,'%.f' % self.batRemain,color='w',size=self.fontSize,ha='center',va='top')
         self.batPerText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        self.voltsText = self.axes.text(rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-(0.1+0.05+0.075)*self.batHeight,'%.1f V' % self.voltage,color='w',size=self.fontSize,ha='right',va='top')
+        self.ampsText = self.axes.text(rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-self.vertSize-(0.1+0.05+0.1+0.075)*self.batHeight,'%.1f A' % self.current,color='w',size=self.fontSize,ha='right',va='top')
+        self.voltsText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        self.ampsText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         
         self.axes.add_patch(self.batOutRec)
         self.axes.add_patch(self.batInRec)
@@ -329,6 +334,12 @@ class HorizonFrame(wx.Frame):
         self.batInRec.set_xy((rightPos-(self.rOffset+1+0.15)*self.batWidth,1.0-(0.1+1+0.075)*self.batHeight))
         self.batPerText.set_position((rightPos - (self.rOffset+0.65)*self.batWidth,1-(0.1+1+(0.075+0.15))*self.batHeight))
         self.batPerText.set_fontsize(self.fontSize)
+        self.voltsText.set_text('%.1f V' % self.voltage)
+        self.ampsText.set_text('%.1f A' % self.current)
+        self.voltsText.set_position((rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-(0.1+0.05)*self.batHeight))
+        self.ampsText.set_position((rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-self.vertSize-(0.1+0.05+0.1)*self.batHeight))
+        self.voltsText.set_fontsize(self.fontSize)
+        self.ampsText.set_fontsize(self.fontSize)
         if self.batRemain >= 0:
             self.batPerText.set_text(int(self.batRemain))
             self.batInRec.set_height(self.batRemain*self.batHeight/100.0)
