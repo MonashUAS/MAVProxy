@@ -25,3 +25,9 @@ class BatteryInfo():
         self.voltage = batMsg.voltage_battery/1000.0 # Volts
         self.current = batMsg.current_battery/100.0 # Amps
         self.batRemain = batMsg.battery_remaining # %
+        
+class FlightState():
+    '''Mode and arm state.'''
+    def __init__(self,mode,armState):
+        self.mode = mode
+        self.armState = armState

@@ -1,5 +1,5 @@
 import time
-from wxhorizon_util import Attitude, VFR_HUD, Global_Position_INT, BatteryInfo
+from wxhorizon_util import Attitude, VFR_HUD, Global_Position_INT, BatteryInfo, FlightState
 from wx_loader import wx
 import math
 
@@ -48,6 +48,9 @@ class HorizonFrame(wx.Frame):
         self.current = 0.0
         self.batRemain = 0.0
 
+        # Initialise Mode and State
+        self.mode = 'UNKNOWN'
+        self.armed = False
     
 
     def initUI(self):
@@ -98,6 +101,9 @@ class HorizonFrame(wx.Frame):
         self.batHeight = 0.2
         self.rOffset = 0.35
         self.createBatteryBar()
+        
+        # Create mode & state text
+        self.createStateText()
         
         # Show Frame
         self.Show(True)
@@ -352,9 +358,34 @@ class HorizonFrame(wx.Frame):
         elif self.batRemain == -1:
             self.batInRec.set_height(self.batHeight)
             self.batInRec.set_facecolor('k')
-            
         
+    def createStateText(self):
+        '''Creates the mode and arm state text.'''
+        self.vertSize = 0.09
+        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+        self.fontSize = self.vertSize*(ypx/2.0)
+        leftPos = self.axes.get_xlim()[0]
+        self.modeText = self.axes.text(leftPos+(self.vertSize/10.0),0.97,'UNKNOWN',color='lightgreen',size=1.5*self.fontSize,ha='left',va='top')
+        #self.modeText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         
+    def updateStateText(self):
+        '''Updates the mode and colours red or green depending on arm state.'''
+        self.vertSize = 0.09
+        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+        self.fontSize = self.vertSize*(ypx/2.0)
+        leftPos = self.axes.get_xlim()[0]
+        self.modeText.set_position((leftPos+(self.vertSize/10.0),0.97))
+        self.modeText.set_text(self.mode)
+        self.modeText.set_size(1.5*self.fontSize)
+        if self.armed:
+            self.modeText.set_color('red')
+            #self.modeText.set_bbox({'facecolor':'yellow', 'alpha':0.5, 'pad':10})
+            self.modeText.set_path_effects([PathEffects.withStroke(linewidth=self.fontSize/10.0,foreground='yellow')])
+        else:
+            self.modeText.set_color('lightgreen')
+            self.modeText.set_bbox(None)
+            self.modeText.set_path_effects(None)
+    
     # =============== Event Bindings =============== #    
     def on_idle(self, event):
         '''To adjust text and positions on rescaling the window.'''
@@ -379,6 +410,9 @@ class HorizonFrame(wx.Frame):
         
         # Update Battery Bar
         self.updateBatteryBar()
+        
+        # Update Mode and State
+        self.updateStateText()
         
         # Update Matplotlib Plot
         self.canvas.draw()
@@ -442,6 +476,14 @@ class HorizonFrame(wx.Frame):
                 # Update Battery Bar
                 self.updateBatteryBar()
                 
+            elif isinstance(obj,FlightState):
+                self.mode = obj.mode
+                self.armed = obj.armState
+                
+                # Update Mode and Arm State Text
+                self.updateStateText()
+                
+                                
         self.Refresh()
         self.Update()
                 
