@@ -77,15 +77,66 @@ class HorizonFrame(wx.Frame):
         # Create Heading Pointer
         self.createHeadingPointer()
         
+        # Create North Pointer
+        self.createNorthPointer()
+        
         # Show Frame
         self.Show(True)
         self.pending = []
     
+    def createPlotPanel(self):
+        '''Creates the figure and axes for the plotting panel.'''
+        self.figure = Figure()
+        self.axes = self.figure.add_subplot(111)
+        self.canvas = FigureCanvas(self,-1,self.figure)
+        self.canvas.SetSize(wx.Size(300,300))
+        self.axes.axis('off')
+        self.figure.subplots_adjust(left=0,right=1,top=1,bottom=0)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.Add(self.canvas,1,wx.EXPAND,wx.ALL)
+        self.SetSizerAndFit(self.sizer)
+        self.Fit()
+        
+    def rescaleX(self):
+        '''Rescales the horizontal axes to make the lengthscales equal.'''
+        self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
+        self.axes.set_xlim(-self.ratio,self.ratio)
+        self.axes.set_ylim(-1,1)
+    
     def createHeadingPointer(self):
         '''Creates the pointer for the current heading.'''
-        self.headingTri = patches.RegularPolygon((0.0,0.80),3,0.05,color='k')
+        self.headingTri = patches.RegularPolygon((0.0,0.80),3,0.05,color='k',zorder=4)
         self.axes.add_patch(self.headingTri)
-        self.headingText = self.axes.text(0.0,0.675,'0',color='k',size=self.fontSize,horizontalalignment='center',verticalalignment='center')
+        self.headingText = self.axes.text(0.0,0.675,'0',color='k',size=self.fontSize,horizontalalignment='center',verticalalignment='center',zorder=4)
+    
+    def adjustHeadingPointer(self):
+        '''Adjust the value of the heading pointer.'''
+        self.headingText.set_text(str(self.heading))
+        self.headingText.set_size(self.fontSize) 
+    
+    def createNorthPointer(self):
+        '''Creates the north pointer relative to current heading.'''
+        self.headingNorthTri = patches.RegularPolygon((0.0,0.80),3,0.05,color='k',zorder=4)
+        self.axes.add_patch(self.headingNorthTri)
+        self.headingNorthText = self.axes.text(0.0,0.675,'N',color='k',size=self.fontSize,horizontalalignment='center',verticalalignment='center',zorder=4)    
+
+    def adjustNorthPointer(self):
+        '''Adjust the position and orientation of
+        the north pointer.'''
+        self.headingNorthText.set_size(self.fontSize) 
+        headingRotate = mpl.transforms.Affine2D().rotate_deg_around(0.0,0.0,self.heading)+self.axes.transData
+        self.headingNorthText.set_transform(headingRotate)
+        if (self.heading > 90) and (self.heading < 270):
+            headRot = self.heading-180
+        else:
+            headRot = self.heading
+        self.headingNorthText.set_rotation(headRot)
+        self.headingNorthTri.set_transform(headingRotate)
+        # Adjust if overlapping with heading pointer
+        if (self.heading <= 10.0) or (self.heading >= 350.0):
+            self.headingNorthText.set_text('')
+        else:
+            self.headingNorthText.set_text('N')
     
     def createRPYText(self):
         '''Creates the text for roll, pitch and yaw.'''
@@ -99,6 +150,26 @@ class HorizonFrame(wx.Frame):
         self.rollText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         self.pitchText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         self.yawText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        
+    def updateRPYLocations(self):
+        '''Update the locations of rol, pitch, yaw text.'''
+        leftPos = self.axes.get_xlim()[0]
+        # Locations
+        self.rollText.set_position((leftPos+(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0)))
+        self.pitchText.set_position((leftPos+(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0)))
+        self.yawText.set_position((leftPos+(self.vertSize/10.0),-0.97))
+        # Font Size
+        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+        self.fontSize = self.vertSize*(ypx/2.0)
+        self.rollText.set_size(self.fontSize)
+        self.pitchText.set_size(self.fontSize)
+        self.yawText.set_size(self.fontSize)
+        
+    def updateRPYText(self):
+        'Updates the displayed Roll, Pitch, Yaw Text'
+        self.rollText.set_text('Roll:   %.2f' % self.roll)
+        self.pitchText.set_text('Pitch: %.2f' % self.pitch)
+        self.yawText.set_text('Yaw:   %.2f' % self.yaw)
         
     def createCenterPointMarker(self):
         '''Creates the center pointer in the middle of the screen.'''
@@ -116,32 +187,19 @@ class HorizonFrame(wx.Frame):
         vertsBot = [[-1,0],[-1,-1],[1,-1],[1,0],[-1,0]]
         self.botPolygon = Polygon(vertsBot,facecolor='brown',edgecolor='none')
         self.axes.add_patch(self.botPolygon)
+        
+    def calcHorizonPoints(self):
+        '''Updates the verticies of the patches for the ground and sky.'''
+        self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
+        ydiff = math.tan(math.radians(-self.roll))*float(self.ratio)
+        pitchdiff = self.dist10deg*(self.pitch/10.0)
+        # Sky Polygon
+        vertsTop = [(-self.ratio,ydiff-pitchdiff),(-self.ratio,1),(self.ratio,1),(self.ratio,-ydiff-pitchdiff),(-self.ratio,ydiff-pitchdiff)]       
+        self.topPolygon.set_xy(vertsTop)
+        # Ground Polygon
+        vertsBot = [(-self.ratio,ydiff-pitchdiff),(-self.ratio,-1),(self.ratio,-1),(self.ratio,-ydiff-pitchdiff),(-self.ratio,ydiff-pitchdiff)]       
+        self.botPolygon.set_xy(vertsBot)  
     
-    def createPlotPanel(self):
-        '''Creates the figure and axes for the plotting panel.'''
-        self.figure = Figure()
-        self.axes = self.figure.add_subplot(111)
-        self.canvas = FigureCanvas(self,-1,self.figure)
-        self.canvas.SetSize(wx.Size(300,300))
-        self.axes.axis('off')
-        self.figure.subplots_adjust(left=0,right=1,top=1,bottom=0)
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(self.canvas,1,wx.EXPAND,wx.ALL)
-        self.SetSizerAndFit(self.sizer)
-        self.Fit()
-        
-    def calcPitchMarkerWidth(self,i):
-        '''Calculates the width of a pitch marker.'''
-        if (i % 3) == 0:
-            if i == 0:
-                width = 1.5
-            else:
-                width = 0.9
-        else:
-            width = 0.6
-            
-        return width
-        
     def createPitchMarkers(self):
         '''Creates the rectangle patches for the pitch indicators.'''
         self.pitchPatches = []
@@ -165,6 +223,18 @@ class HorizonFrame(wx.Frame):
             self.pitchLabelsRight[i].set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
             i += 1
         
+    def calcPitchMarkerWidth(self,i):
+        '''Calculates the width of a pitch marker.'''
+        if (i % 3) == 0:
+            if i == 0:
+                width = 1.5
+            else:
+                width = 0.9
+        else:
+            width = 0.6
+            
+        return width
+        
     def adjustPitchmarkers(self):
         '''Adjusts the location and orientation of pitch markers.'''
         pitchdiff = self.dist10deg*(self.pitch/10.0)
@@ -186,62 +256,11 @@ class HorizonFrame(wx.Frame):
                 self.pitchLabelsRight[i].set_rotation(self.roll)
                 self.pitchLabelsLeft[i].set_transform(rollRotate)
                 self.pitchLabelsRight[i].set_transform(rollRotate)
-                i += 1
-        
-    def rescaleX(self):
-        '''Rescales the horizontal axes to make the lengthscales equal.'''
-        self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
-        self.axes.set_xlim(-self.ratio,self.ratio)
-        self.axes.set_ylim(-1,1)
-        
-    def calcHorizonPoints(self):
-        '''Updates the verticies of the patches for the ground and sky.'''
-        self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
-        ydiff = math.tan(math.radians(-self.roll))*float(self.ratio)
-        pitchdiff = self.dist10deg*(self.pitch/10.0)
-        # Sky Polygon
-        vertsTop = [(-self.ratio,ydiff-pitchdiff),(-self.ratio,1),(self.ratio,1),(self.ratio,-ydiff-pitchdiff),(-self.ratio,ydiff-pitchdiff)]       
-        self.topPolygon.set_xy(vertsTop)
-        # Ground Polygon
-        vertsBot = [(-self.ratio,ydiff-pitchdiff),(-self.ratio,-1),(self.ratio,-1),(self.ratio,-ydiff-pitchdiff),(-self.ratio,ydiff-pitchdiff)]       
-        self.botPolygon.set_xy(vertsBot)       
-        
-    def updateAttitudeText(self):
-        'Updates the displayed attitude Text'
-        self.rollText.set_text('Roll:   %.2f' % self.roll)
-        self.pitchText.set_text('Pitch: %.2f' % self.pitch)
-        self.yawText.set_text('Yaw:   %.2f' % self.yaw)
-
-    def updateRPYLocations(self):
-        '''Update the locations of rol, pitch, yaw text.'''
-        leftPos = self.axes.get_xlim()[0]
-        # Locations
-        self.rollText.set_position((leftPos+(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0)))
-        self.pitchText.set_position((leftPos+(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0)))
-        self.yawText.set_position((leftPos+(self.vertSize/10.0),-0.97))
-        # Font Size
-        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
-        self.fontSize = self.vertSize*(ypx/2.0)
-        self.rollText.set_size(self.fontSize)
-        self.pitchText.set_size(self.fontSize)
-        self.yawText.set_size(self.fontSize)
-        
-    def adjustHeadingPointer(self):
-        '''Adjust the position and orientation of
-        the north pointer.'''
-        self.headingText.set_text(str(self.heading))
-        self.headingText.set_size(self.fontSize) 
-        headingRotate = mpl.transforms.Affine2D().rotate_deg_around(0.0,0.0,-self.heading)+self.axes.transData
-        self.headingText.set_transform(headingRotate)
-        if (self.heading > 90) and (self.heading < 270):
-            headRot = self.heading-180
-        else:
-            headRot = self.heading
-        self.headingText.set_rotation(-headRot)
-        self.headingTri.set_transform(headingRotate)
+                i += 1 
     
     # =============== Event Bindings =============== #    
     def on_idle(self, event):
+        '''To adjust text and positions on rescaling the window.'''
         # Fix Window Scales 
         self.rescaleX()
         
@@ -254,8 +273,9 @@ class HorizonFrame(wx.Frame):
         # Update Pitch Markers
         self.adjustPitchmarkers()
         
-        # Update North Pointer
+        # Update Heading and North Pointer
         self.adjustHeadingPointer()
+        self.adjustNorthPointer()
         
         # Update Matplotlib Plot
         self.canvas.draw()
@@ -265,6 +285,7 @@ class HorizonFrame(wx.Frame):
         time.sleep(0.05)
  
     def on_timer(self, event):
+        '''Main Loop.'''
         state = self.state
         if state.close_event.wait(0.001):
             self.timer.Stop()
@@ -280,7 +301,7 @@ class HorizonFrame(wx.Frame):
                 self.yaw = obj.yaw*180/math.pi
                 
                 # Update Displayed Text
-                self.updateAttitudeText()
+                self.updateRPYText()
                 
                 # Recalculate Horizon Polygons
                 self.calcHorizonPoints()
@@ -295,13 +316,15 @@ class HorizonFrame(wx.Frame):
             if isinstance(obj,VFR_HUD):
                 self.heading = obj.heading
                 
-                # Update North Pointer
+                # Update Heading North Pointer
                 self.adjustHeadingPointer()
+                self.adjustNorthPointer()
                 
         self.Refresh()
         self.Update()
                 
     def on_KeyPress(self,event):
+        '''To adjust the distance between pitch markers.'''
         if event.GetKeyCode() == wx.WXK_UP:
             self.dist10deg += 0.1
             print 'Dist per 10 deg: %.1f' % self.dist10deg      
