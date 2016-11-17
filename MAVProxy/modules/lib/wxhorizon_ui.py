@@ -96,6 +96,7 @@ class HorizonFrame(wx.Frame):
         # Create Battery Bar
         self.batWidth = 0.1
         self.batHeight = 0.2
+        self.rOffset = 0.35
         self.createBatteryBar()
         
         # Show Frame
@@ -309,12 +310,13 @@ class HorizonFrame(wx.Frame):
         self.altitudeText.set_text('ALT: %.1f m   ' % self.relAlt)
         self.climbRateText.set_text('CR:   %.1f m/s' % self.climbRate)
     
-    
     def createBatteryBar(self):
         '''Creates the bar to display current battery percentage.'''
         rightPos = self.axes.get_xlim()[1]
-        self.batOutRec = patches.Rectangle((rightPos-(1.3+0.1)*self.batWidth,1.0-(0.1+1.0+(2*0.075))*self.batHeight),self.batWidth*1.3,self.batHeight*1.15,facecolor='darkgrey',edgecolor='none')
-        self.batInRec = patches.Rectangle((rightPos-(0.1+1+0.15)*self.batWidth,1.0-(0.1+1+0.075)*self.batHeight),self.batWidth,self.batHeight,facecolor='lawngreen',edgecolor='none')
+        self.batOutRec = patches.Rectangle((rightPos-(1.3+self.rOffset)*self.batWidth,1.0-(0.1+1.0+(2*0.075))*self.batHeight),self.batWidth*1.3,self.batHeight*1.15,facecolor='darkgrey',edgecolor='none')
+        self.batInRec = patches.Rectangle((rightPos-(self.rOffset+1+0.15)*self.batWidth,1.0-(0.1+1+0.075)*self.batHeight),self.batWidth,self.batHeight,facecolor='lawngreen',edgecolor='none')
+        self.batPerText = self.axes.text(rightPos - (self.rOffset+0.65)*self.batWidth,1-(0.1+1+(0.075+0.15))*self.batHeight,'%.f' % self.batRemain,color='w',size=self.fontSize,ha='center',va='top')
+        self.batPerText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         
         self.axes.add_patch(self.batOutRec)
         self.axes.add_patch(self.batInRec)
@@ -323,17 +325,20 @@ class HorizonFrame(wx.Frame):
         '''Updates the position and values of the battery bar.'''
         rightPos = self.axes.get_xlim()[1]
         # Bar
-        self.batOutRec.set_xy((rightPos-(1.3+0.1)*self.batWidth,1.0-(0.1+1.0+(2*0.075))*self.batHeight))
-        self.batInRec.set_xy((rightPos-(0.1+1+0.15)*self.batWidth,1.0-(0.1+1+0.075)*self.batHeight))
-        if self.batRemain != -1:
+        self.batOutRec.set_xy((rightPos-(1.3+self.rOffset)*self.batWidth,1.0-(0.1+1.0+(2*0.075))*self.batHeight))
+        self.batInRec.set_xy((rightPos-(self.rOffset+1+0.15)*self.batWidth,1.0-(0.1+1+0.075)*self.batHeight))
+        self.batPerText.set_position((rightPos - (self.rOffset+0.65)*self.batWidth,1-(0.1+1+(0.075+0.15))*self.batHeight))
+        self.batPerText.set_fontsize(self.fontSize)
+        if self.batRemain >= 0:
+            self.batPerText.set_text(int(self.batRemain))
             self.batInRec.set_height(self.batRemain*self.batHeight/100.0)
             if self.batRemain/100.0 > 0.5:
                 self.batInRec.set_facecolor('lawngreen')
             elif self.batRemain/100.0 <= 0.5 and self.batRemain/100.0 > 0.2:
                 self.batInRec.set_facecolor('yellow')
-            elif self.batRemain/100.0 <= 0.2:
+            elif self.batRemain/100.0 <= 0.2 and self.batRemain >= 0.0:
                 self.batInRec.set_facecolor('r')
-        else:
+        elif self.batRemain == -1:
             self.batInRec.set_height(self.batHeight)
             self.batInRec.set_facecolor('k')
             
