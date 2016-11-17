@@ -6,7 +6,7 @@
 
 from MAVProxy.modules.lib import wxhorizon
 from MAVProxy.modules.lib import mp_module
-from MAVProxy.modules.lib.wxhorizon_util import Attitude, VFR_HUD, Global_Position_INT, BatteryInfo, FlightState
+from MAVProxy.modules.lib.wxhorizon_util import Attitude, VFR_HUD, Global_Position_INT, BatteryInfo, FlightState, WaypointInfo
 
 
 class HorizonModule(mp_module.MPModule):
@@ -16,6 +16,9 @@ class HorizonModule(mp_module.MPModule):
         self.mpstate.horizonIndicator = wxhorizon.HorizonIndicator(title='Horizon Indicator')
         self.oldMode = ''
         self.armed = False
+        self.current = 0
+        self.final = 0
+        self.currentDist = 0
         
     def unload(self):
         '''unload module'''
@@ -35,7 +38,17 @@ class HorizonModule(mp_module.MPModule):
             # Send altitude information down pipe
             self.mpstate.horizonIndicator.parent_pipe_send.send(Global_Position_INT(msg))
         elif msgType == 'SYS_STATUS':
+            # Mode and Arm State
             self.mpstate.horizonIndicator.parent_pipe_send.send(BatteryInfo(msg))
+        elif msgType in ['WAYPOINT_CURRENT', 'MISSION_CURRENT']:
+            # Waypoints
+            self.current = msg.seq
+            self.final = self.module('wp').wploader.count()
+            self.mpstate.horizonIndicator.parent_pipe_send.send(WaypointInfo(self.current,self.final,self.currentDist))
+        elif msgType == 'NAV_CONTROLLER_OUTPUT':
+            self.currentDist = msg.wp_dist
+            self.mpstate.horizonIndicator.parent_pipe_send.send(WaypointInfo(self.current,self.final,self.currentDist))
+
             
         # Update state and mode information
         updateState = False

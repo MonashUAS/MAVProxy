@@ -31,3 +31,11 @@ class FlightState():
     def __init__(self,mode,armState):
         self.mode = mode
         self.armState = armState
+        
+class WaypointInfo():
+    '''Current and final waypoint numbers, and the distance
+    to the current waypoint.'''
+    def __init__(self,current,final,currentDist):
+        self.current = current
+        self.final = final
+        self.currentDist = currentDist

@@ -1,5 +1,5 @@
 import time
-from wxhorizon_util import Attitude, VFR_HUD, Global_Position_INT, BatteryInfo, FlightState
+from wxhorizon_util import Attitude, VFR_HUD, Global_Position_INT, BatteryInfo, FlightState, WaypointInfo
 from wx_loader import wx
 import math
 
@@ -51,6 +51,11 @@ class HorizonFrame(wx.Frame):
         # Initialise Mode and State
         self.mode = 'UNKNOWN'
         self.armed = False
+        
+        # Intialise Waypoint Information
+        self.currentWP = 0
+        self.finalWP = 0
+        self.wpDist = 0
     
 
     def initUI(self):
@@ -102,8 +107,11 @@ class HorizonFrame(wx.Frame):
         self.rOffset = 0.35
         self.createBatteryBar()
         
-        # Create mode & state text
+        # Create Mode & State Text
         self.createStateText()
+        
+        # Create Waypoint Text
+        self.createWPText()
         
         # Show Frame
         self.Show(True)
@@ -366,7 +374,6 @@ class HorizonFrame(wx.Frame):
         self.fontSize = self.vertSize*(ypx/2.0)
         leftPos = self.axes.get_xlim()[0]
         self.modeText = self.axes.text(leftPos+(self.vertSize/10.0),0.97,'UNKNOWN',color='lightgreen',size=1.5*self.fontSize,ha='left',va='top')
-        #self.modeText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         
     def updateStateText(self):
         '''Updates the mode and colours red or green depending on arm state.'''
@@ -379,12 +386,30 @@ class HorizonFrame(wx.Frame):
         self.modeText.set_size(1.5*self.fontSize)
         if self.armed:
             self.modeText.set_color('red')
-            #self.modeText.set_bbox({'facecolor':'yellow', 'alpha':0.5, 'pad':10})
             self.modeText.set_path_effects([PathEffects.withStroke(linewidth=self.fontSize/10.0,foreground='yellow')])
         else:
             self.modeText.set_color('lightgreen')
             self.modeText.set_bbox(None)
             self.modeText.set_path_effects(None)
+            
+    def createWPText(self):
+        '''Creates the text for the current and final waypoint,
+        and the distance to the new waypoint.'''
+        self.vertSize = 0.09
+        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+        self.fontSize = self.vertSize*(ypx/2.0)
+        leftPos = self.axes.get_xlim()[0]
+        self.wpText = self.axes.text(leftPos+(1.5*self.vertSize/10.0),0.97-(1.5*self.vertSize)+(0.5*self.vertSize/10.0),'0/0 (0 m)',color='w',size=self.fontSize,ha='left',va='top')
+        
+    def updateWPText(self):
+        '''Updates the current waypoint and distance to it.'''
+        self.vertSize = 0.09    
+        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+        self.fontSize = self.vertSize*(ypx/2.0)
+        leftPos = self.axes.get_xlim()[0]
+        self.wpText.set_position((leftPos+(1.5*self.vertSize/10.0),0.97-(1.5*self.vertSize)+(0.5*self.vertSize/10.0)))
+        self.wpText.set_size(self.fontSize)
+        self.wpText.set_text('%.f/%.f (%.f m)' % (self.currentWP,self.finalWP,self.wpDist))
     
     # =============== Event Bindings =============== #    
     def on_idle(self, event):
@@ -413,6 +438,9 @@ class HorizonFrame(wx.Frame):
         
         # Update Mode and State
         self.updateStateText()
+        
+        # Update Waypoint Text
+        self.updateWPText()
         
         # Update Matplotlib Plot
         self.canvas.draw()
@@ -482,6 +510,14 @@ class HorizonFrame(wx.Frame):
                 
                 # Update Mode and Arm State Text
                 self.updateStateText()
+                
+            elif isinstance(obj,WaypointInfo):
+                self.currentWP = obj.current
+                self.finalWP = obj.final
+                self.wpDist = obj.currentDist
+                
+                # Update waypoint text
+                self.updateWPText()
                 
                                 
         self.Refresh()
