@@ -35,11 +35,12 @@ class FlightState():
 class WaypointInfo():
     '''Current and final waypoint numbers, and the distance
     to the current waypoint.'''
-    def __init__(self,current,final,currentDist,nextWPTime):
+    def __init__(self,current,final,currentDist,nextWPTime,wpBearing):
         self.current = current
         self.final = final
         self.currentDist = currentDist
         self.nextWPTime = nextWPTime
+        self.wpBearing = wpBearing
         
         
         

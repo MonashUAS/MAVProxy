@@ -57,6 +57,7 @@ class HorizonFrame(wx.Frame):
         self.finalWP = 0
         self.wpDist = 0
         self.nextWPTime = 0
+        self.wpBearing = 0
     
 
     def initUI(self):
@@ -113,6 +114,9 @@ class HorizonFrame(wx.Frame):
         
         # Create Waypoint Text
         self.createWPText()
+        
+        # Create Waypoint Pointer
+        self.createWPPointer()
         
         # Show Frame
         self.Show(True)
@@ -412,6 +416,28 @@ class HorizonFrame(wx.Frame):
         self.wpText.set_size(self.fontSize)
         self.wpText.set_text('%.f/%.f\n(%.f m, %.f s)' % (self.currentWP,self.finalWP,self.wpDist,self.nextWPTime))
     
+    def createWPPointer(self):
+        '''Creates the waypoint pointer relative to current heading.'''
+        self.headingWPTri = patches.RegularPolygon((0.0,0.55),3,0.05,facecolor='lime',zorder=4,ec='k')
+        self.axes.add_patch(self.headingWPTri)
+        self.headingWPText = self.axes.text(0.0,0.45,'1',color='lime',size=self.fontSize,horizontalalignment='center',verticalalignment='center',zorder=4)   
+        self.headingWPText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')]) 
+
+    def adjustWPPointer(self):
+        '''Adjust the position and orientation of
+        the waypoint pointer.'''
+        self.headingWPText.set_size(self.fontSize) 
+        headingRotate = mpl.transforms.Affine2D().rotate_deg_around(0.0,0.0,-self.wpBearing+self.heading)+self.axes.transData
+        self.headingWPText.set_transform(headingRotate)
+        angle = self.wpBearing - self.heading
+        if (angle > 90) and (angle < 270):
+            headRot = angle-180
+        else:
+            headRot = angle
+        self.headingWPText.set_rotation(-headRot)
+        self.headingWPTri.set_transform(headingRotate)
+        self.headingWPText.set_text('%.f' % (self.wpBearing-self.heading))
+    
     # =============== Event Bindings =============== #    
     def on_idle(self, event):
         '''To adjust text and positions on rescaling the window.'''
@@ -442,6 +468,9 @@ class HorizonFrame(wx.Frame):
         
         # Update Waypoint Text
         self.updateWPText()
+        
+        # Adjust Waypoint Pointer
+        self.adjustWPPointer()
         
         # Update Matplotlib Plot
         self.canvas.draw()
@@ -517,9 +546,16 @@ class HorizonFrame(wx.Frame):
                 self.finalWP = obj.final
                 self.wpDist = obj.currentDist
                 self.nextWPTime = obj.nextWPTime
+                if obj.wpBearing < 0.0:
+                    self.wpBearing = obj.wpBearing + 360
+                else:
+                    self.wpBearing = obj.wpBearing
                 
                 # Update waypoint text
                 self.updateWPText()
+                
+                # Adjust Waypoint Pointer
+                self.adjustWPPointer()
                 
                                 
         self.Refresh()

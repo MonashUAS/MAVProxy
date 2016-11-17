@@ -21,6 +21,7 @@ class HorizonModule(mp_module.MPModule):
         self.currentDist = 0
         self.nextWPTime = 0
         self.speed = 0
+        self.wpBearing = 0
         
     def unload(self):
         '''unload module'''
@@ -46,12 +47,13 @@ class HorizonModule(mp_module.MPModule):
             # Waypoints
             self.currentWP = msg.seq
             self.finalWP = self.module('wp').wploader.count()
-            self.mpstate.horizonIndicator.parent_pipe_send.send(WaypointInfo(self.currentWP,self.finalWP,self.currentDist,self.nextWPTime))
+            self.mpstate.horizonIndicator.parent_pipe_send.send(WaypointInfo(self.currentWP,self.finalWP,self.currentDist,self.nextWPTime,self.wpBearing))
         elif msgType == 'NAV_CONTROLLER_OUTPUT':
             self.currentDist = msg.wp_dist
             self.checkSpeed(master)
             self.nextWPTime = self.currentDist / self.speed
-            self.mpstate.horizonIndicator.parent_pipe_send.send(WaypointInfo(self.currentWP,self.finalWP,self.currentDist,self.nextWPTime))
+            self.wpBearing = msg.target_bearing
+            self.mpstate.horizonIndicator.parent_pipe_send.send(WaypointInfo(self.currentWP,self.finalWP,self.currentDist,self.nextWPTime,self.wpBearing))
 
         # Update state and mode information
         updateState = False
