@@ -430,6 +430,8 @@ class HorizonFrame(wx.Frame):
         headingRotate = mpl.transforms.Affine2D().rotate_deg_around(0.0,0.0,-self.wpBearing+self.heading)+self.axes.transData
         self.headingWPText.set_transform(headingRotate)
         angle = self.wpBearing - self.heading
+        if angle < 0:
+            angle += 360
         if (angle > 90) and (angle < 270):
             headRot = angle-180
         else:
