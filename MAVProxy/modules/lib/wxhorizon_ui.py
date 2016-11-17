@@ -307,7 +307,7 @@ class HorizonFrame(wx.Frame):
             print 'Dist per 10 deg: %.1f' % self.dist10deg      
         elif event.GetKeyCode() == wx.WXK_DOWN:
             self.dist10deg -= 0.1
-            if self.dist10deg < 0:
-                self.dist10deg = 0
+            if self.dist10deg <= 0:
+                self.dist10deg = 0.1
             print 'Dist per 10 deg: %.1f' % self.dist10deg      
 
