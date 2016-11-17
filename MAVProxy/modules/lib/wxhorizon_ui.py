@@ -52,43 +52,43 @@ class HorizonFrame(wx.Frame):
         self.panel = wx.Panel(self)
         
         # Create Matplotlib Panel
-        self.figure = Figure()
-        self.axes = self.figure.add_subplot(111)
-        self.canvas = FigureCanvas(self,-1,self.figure)
-        self.canvas.SetSize(wx.Size(300,300))
-        self.axes.axis('off')
-        self.figure.subplots_adjust(left=0,right=1,top=1,bottom=0)
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(self.canvas,1,wx.EXPAND,wx.ALL)
-        self.SetSizerAndFit(self.sizer)
-        self.Fit()
+        self.createPlotPanel()
 
         # Fix Axes - vertical is of length 2, horizontal keeps the same lengthscale
         self.rescaleX()
         
-        # Sky Polygon
-        vertsTop = [[-1,0],[-1,1],[1,1],[1,0],[-1,0]]
-        self.topPolygon = Polygon(vertsTop,facecolor='cyan',edgecolor='none')
-        self.axes.add_patch(self.topPolygon)
-        # Ground Polygon
-        vertsBot = [[-1,0],[-1,-1],[1,-1],[1,0],[-1,0]]
-        self.botPolygon = Polygon(vertsBot,facecolor='brown',edgecolor='none')
-        self.axes.add_patch(self.botPolygon)
+        # Create Horizon Polygons
+        self.createHorizonPolygons()
         
-        # Markers
-        self.axes.plot([-1,-1,1,1],[-1,1,1,-1],'ro')
+        # Markers (temporary)
+        #self.axes.plot([-1,-1,1,1],[-1,1,1,-1],'ro')
         
         # Center Pointer Marker
         self.thick = 0.015
-        self.axes.add_patch(patches.Rectangle((-0.75,-self.thick),0.5,2.0*self.thick,facecolor='orange',zorder=3))
-        self.axes.add_patch(patches.Rectangle((0.25,-self.thick),0.5,2.0*self.thick,facecolor='orange',zorder=3))
-        self.axes.add_patch(patches.Circle((0,0),radius=self.thick,facecolor='orange',edgecolor='none',zorder=3))
+        self.createCenterPointMarker()
         
         # Pitch Markers
         self.dist10deg = 0.2 # Graph distance per 10 deg
         self.createPitchMarkers()
         
         # Add Roll, Pitch, Yaw Text
+        self.createRPYText()
+        
+        # Create Heading Pointer
+        self.createHeadingPointer()
+        
+        # Show Frame
+        self.Show(True)
+        self.pending = []
+    
+    def createHeadingPointer(self):
+        '''Creates the pointer for the current heading.'''
+        self.headingTri = patches.RegularPolygon((0.0,0.80),3,0.05,color='k')
+        self.axes.add_patch(self.headingTri)
+        self.headingText = self.axes.text(0.0,0.675,'0',color='k',size=self.fontSize,horizontalalignment='center',verticalalignment='center')
+    
+    def createRPYText(self):
+        '''Creates the text for roll, pitch and yaw.'''
         self.vertSize = 0.09
         ypx = self.figure.get_size_inches()[1]*self.figure.dpi
         self.fontSize = self.vertSize*(ypx/2.0)
@@ -100,14 +100,35 @@ class HorizonFrame(wx.Frame):
         self.pitchText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         self.yawText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         
-        # Create Heading Pointer
-        self.headingTri = patches.RegularPolygon((0.0,0.80),3,0.05,color='k')
-        self.axes.add_patch(self.headingTri)
-        self.headingText = self.axes.text(0.0,0.675,'0',color='k',size=self.fontSize,horizontalalignment='center',verticalalignment='center')
+    def createCenterPointMarker(self):
+        '''Creates the center pointer in the middle of the screen.'''
+        self.axes.add_patch(patches.Rectangle((-0.75,-self.thick),0.5,2.0*self.thick,facecolor='orange',zorder=3))
+        self.axes.add_patch(patches.Rectangle((0.25,-self.thick),0.5,2.0*self.thick,facecolor='orange',zorder=3))
+        self.axes.add_patch(patches.Circle((0,0),radius=self.thick,facecolor='orange',edgecolor='none',zorder=3))
         
-        # Show Frame
-        self.Show(True)
-        self.pending = []
+    def createHorizonPolygons(self):
+        '''Creates the two polygons to show the sky and ground.'''
+        # Sky Polygon
+        vertsTop = [[-1,0],[-1,1],[1,1],[1,0],[-1,0]]
+        self.topPolygon = Polygon(vertsTop,facecolor='dodgerblue',edgecolor='none')
+        self.axes.add_patch(self.topPolygon)
+        # Ground Polygon
+        vertsBot = [[-1,0],[-1,-1],[1,-1],[1,0],[-1,0]]
+        self.botPolygon = Polygon(vertsBot,facecolor='brown',edgecolor='none')
+        self.axes.add_patch(self.botPolygon)
+    
+    def createPlotPanel(self):
+        '''Creates the figure and axes for the plotting panel.'''
+        self.figure = Figure()
+        self.axes = self.figure.add_subplot(111)
+        self.canvas = FigureCanvas(self,-1,self.figure)
+        self.canvas.SetSize(wx.Size(300,300))
+        self.axes.axis('off')
+        self.figure.subplots_adjust(left=0,right=1,top=1,bottom=0)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.Add(self.canvas,1,wx.EXPAND,wx.ALL)
+        self.SetSizerAndFit(self.sizer)
+        self.Fit()
         
     def calcPitchMarkerWidth(self,i):
         '''Calculates the width of a pitch marker.'''
@@ -218,7 +239,8 @@ class HorizonFrame(wx.Frame):
             headRot = self.heading
         self.headingText.set_rotation(-headRot)
         self.headingTri.set_transform(headingRotate)
-
+    
+    # =============== Event Bindings =============== #    
     def on_idle(self, event):
         # Fix Window Scales 
         self.rescaleX()
@@ -274,7 +296,7 @@ class HorizonFrame(wx.Frame):
                 self.heading = obj.heading
                 
                 # Update North Pointer
-                
+                self.adjustHeadingPointer()
                 
         self.Refresh()
         self.Update()
