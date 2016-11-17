@@ -16,9 +16,11 @@ class HorizonModule(mp_module.MPModule):
         self.mpstate.horizonIndicator = wxhorizon.HorizonIndicator(title='Horizon Indicator')
         self.oldMode = ''
         self.armed = False
-        self.current = 0
-        self.final = 0
+        self.currentWP = 0
+        self.finalWP = 0
         self.currentDist = 0
+        self.nextWPTime = 0
+        self.speed = 0
         
     def unload(self):
         '''unload module'''
@@ -42,14 +44,15 @@ class HorizonModule(mp_module.MPModule):
             self.mpstate.horizonIndicator.parent_pipe_send.send(BatteryInfo(msg))
         elif msgType in ['WAYPOINT_CURRENT', 'MISSION_CURRENT']:
             # Waypoints
-            self.current = msg.seq
-            self.final = self.module('wp').wploader.count()
-            self.mpstate.horizonIndicator.parent_pipe_send.send(WaypointInfo(self.current,self.final,self.currentDist))
+            self.currentWP = msg.seq
+            self.finalWP = self.module('wp').wploader.count()
+            self.mpstate.horizonIndicator.parent_pipe_send.send(WaypointInfo(self.currentWP,self.finalWP,self.currentDist,self.nextWPTime))
         elif msgType == 'NAV_CONTROLLER_OUTPUT':
             self.currentDist = msg.wp_dist
-            self.mpstate.horizonIndicator.parent_pipe_send.send(WaypointInfo(self.current,self.final,self.currentDist))
+            self.checkSpeed(master)
+            self.nextWPTime = self.currentDist / self.speed
+            self.mpstate.horizonIndicator.parent_pipe_send.send(WaypointInfo(self.currentWP,self.finalWP,self.currentDist,self.nextWPTime))
 
-            
         # Update state and mode information
         updateState = False
         if self.oldMode != master.flightmode:
@@ -60,6 +63,16 @@ class HorizonModule(mp_module.MPModule):
             updateState = True
         if updateState:
             self.mpstate.horizonIndicator.parent_pipe_send.send(FlightState(master.flightmode,master.motors_armed()))
+        
+    def checkSpeed(self,master):
+        # The following is borrowed from 'mavproxy_console.py'
+        airspeed = master.field('VFR_HUD', 'airspeed', 30)
+        if abs(airspeed - self.speed) > 5:
+            self.speed = airspeed
+        else:
+            self.speed = 0.98*self.speed + 0.02*airspeed
+        self.speed = max(1, self.speed)
+        # End of borrowed section
         
 def init(mpstate):
     '''initialise module'''

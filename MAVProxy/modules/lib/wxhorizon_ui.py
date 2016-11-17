@@ -56,6 +56,7 @@ class HorizonFrame(wx.Frame):
         self.currentWP = 0
         self.finalWP = 0
         self.wpDist = 0
+        self.nextWPTime = 0
     
 
     def initUI(self):
@@ -399,7 +400,7 @@ class HorizonFrame(wx.Frame):
         ypx = self.figure.get_size_inches()[1]*self.figure.dpi
         self.fontSize = self.vertSize*(ypx/2.0)
         leftPos = self.axes.get_xlim()[0]
-        self.wpText = self.axes.text(leftPos+(1.5*self.vertSize/10.0),0.97-(1.5*self.vertSize)+(0.5*self.vertSize/10.0),'0/0 (0 m)',color='w',size=self.fontSize,ha='left',va='top')
+        self.wpText = self.axes.text(leftPos+(1.5*self.vertSize/10.0),0.97-(1.5*self.vertSize)+(0.5*self.vertSize/10.0),'0/0\n(0 m, 0 s)',color='w',size=self.fontSize,ha='left',va='top')
         
     def updateWPText(self):
         '''Updates the current waypoint and distance to it.'''
@@ -409,7 +410,7 @@ class HorizonFrame(wx.Frame):
         leftPos = self.axes.get_xlim()[0]
         self.wpText.set_position((leftPos+(1.5*self.vertSize/10.0),0.97-(1.5*self.vertSize)+(0.5*self.vertSize/10.0)))
         self.wpText.set_size(self.fontSize)
-        self.wpText.set_text('%.f/%.f (%.f m)' % (self.currentWP,self.finalWP,self.wpDist))
+        self.wpText.set_text('%.f/%.f\n(%.f m, %.f s)' % (self.currentWP,self.finalWP,self.wpDist,self.nextWPTime))
     
     # =============== Event Bindings =============== #    
     def on_idle(self, event):
@@ -515,6 +516,7 @@ class HorizonFrame(wx.Frame):
                 self.currentWP = obj.current
                 self.finalWP = obj.final
                 self.wpDist = obj.currentDist
+                self.nextWPTime = obj.nextWPTime
                 
                 # Update waypoint text
                 self.updateWPText()
