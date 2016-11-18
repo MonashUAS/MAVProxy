@@ -438,7 +438,7 @@ class HorizonFrame(wx.Frame):
             headRot = angle
         self.headingWPText.set_rotation(-headRot)
         self.headingWPTri.set_transform(headingRotate)
-        self.headingWPText.set_text('%.f' % (self.wpBearing-self.heading))
+        self.headingWPText.set_text('%.f' % (angle))
     
     # =============== Event Bindings =============== #    
     def on_idle(self, event):
