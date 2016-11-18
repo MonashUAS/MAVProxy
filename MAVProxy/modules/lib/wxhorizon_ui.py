@@ -80,9 +80,6 @@ class HorizonFrame(wx.Frame):
         # Create Horizon Polygons
         self.createHorizonPolygons()
         
-        # Markers (temporary)
-        #self.axes.plot([-1,-1,1,1],[-1,1,1,-1],'ro')
-        
         # Center Pointer Marker
         self.thick = 0.015
         self.createCenterPointMarker()
