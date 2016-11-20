@@ -182,6 +182,14 @@ class HorizonFrame(wx.Frame):
             self.headingNorthText.set_text('')
         else:
             self.headingNorthText.set_text('N')
+            
+    def toggleWidgets(self,widgets):
+        '''Hides/shows the given widgets.'''
+        for wig in widgets:
+            if wig.get_visible():
+                wig.set_visible(False)
+            else:
+                wig.set_visible(True)
     
     def createRPYText(self):
         '''Creates the text for roll, pitch and yaw.'''
@@ -552,5 +560,22 @@ class HorizonFrame(wx.Frame):
             self.dist10deg -= 0.1
             if self.dist10deg <= 0:
                 self.dist10deg = 0.1
-            print 'Dist per 10 deg: %.1f' % self.dist10deg      
+            print 'Dist per 10 deg: %.1f' % self.dist10deg   
+        # Toggle Widgets
+        elif event.GetKeyCode() == 49: # 1
+            widgets = [self.modeText,self.wpText]
+            self.toggleWidgets(widgets)  
+        elif event.GetKeyCode() == 50: # 2
+            widgets = [self.batOutRec,self.batInRec,self.voltsText,self.ampsText,self.batPerText]
+            self.toggleWidgets(widgets)     
+        elif event.GetKeyCode() == 51: # 3
+            widgets = [self.rollText,self.pitchText,self.yawText]
+            self.toggleWidgets(widgets)                 
+        elif event.GetKeyCode() == 52: # 4
+            widgets = [self.airspeedText,self.altitudeText,self.climbRateText]
+            self.toggleWidgets(widgets)
+        elif event.GetKeyCode() == 53: # 5
+            widgets = [self.headingTri,self.headingText,self.headingNorthTri,self.headingNorthText,self.headingWPTri,self.headingWPText]
+            self.toggleWidgets(widgets)
+            
 
