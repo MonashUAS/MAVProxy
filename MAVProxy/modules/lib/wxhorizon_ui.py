@@ -78,6 +78,7 @@ class HorizonFrame(wx.Frame):
 
         # Fix Axes - vertical is of length 2, horizontal keeps the same lengthscale
         self.rescaleX()
+        self.calcFontScaling()        
         
         # Create Horizon Polygons
         self.createHorizonPolygons()
@@ -139,6 +140,13 @@ class HorizonFrame(wx.Frame):
         self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
         self.axes.set_xlim(-self.ratio,self.ratio)
         self.axes.set_ylim(-1,1)
+        
+    def calcFontScaling(self):
+        '''Calculates the current font size and left position for the current window.'''
+        self.ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+        self.fontSize = self.vertSize*(self.ypx/2.0)
+        self.leftPos = self.axes.get_xlim()[0]
+        self.rightPos = self.axes.get_xlim()[1]
     
     def createHeadingPointer(self):
         '''Creates the pointer for the current heading.'''
@@ -177,26 +185,20 @@ class HorizonFrame(wx.Frame):
     
     def createRPYText(self):
         '''Creates the text for roll, pitch and yaw.'''
-        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
-        self.fontSize = self.vertSize*(ypx/2.0)
-        leftPos = self.axes.get_xlim()[0]
-        self.rollText = self.axes.text(leftPos+(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0),'Roll:   %.2f' % self.roll,color='w',size=self.fontSize)
-        self.pitchText = self.axes.text(leftPos+(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0),'Pitch: %.2f' % self.pitch,color='w',size=self.fontSize)
-        self.yawText = self.axes.text(leftPos+(self.vertSize/10.0),-0.97,'Yaw:   %.2f' % self.yaw,color='w',size=self.fontSize)
+        self.rollText = self.axes.text(self.leftPos+(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0),'Roll:   %.2f' % self.roll,color='w',size=self.fontSize)
+        self.pitchText = self.axes.text(self.leftPos+(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0),'Pitch: %.2f' % self.pitch,color='w',size=self.fontSize)
+        self.yawText = self.axes.text(self.leftPos+(self.vertSize/10.0),-0.97,'Yaw:   %.2f' % self.yaw,color='w',size=self.fontSize)
         self.rollText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         self.pitchText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         self.yawText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         
     def updateRPYLocations(self):
         '''Update the locations of roll, pitch, yaw text.'''
-        leftPos = self.axes.get_xlim()[0]
         # Locations
-        self.rollText.set_position((leftPos+(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0)))
-        self.pitchText.set_position((leftPos+(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0)))
-        self.yawText.set_position((leftPos+(self.vertSize/10.0),-0.97))
+        self.rollText.set_position((self.leftPos+(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0)))
+        self.pitchText.set_position((self.leftPos+(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0)))
+        self.yawText.set_position((self.leftPos+(self.vertSize/10.0),-0.97))
         # Font Size
-        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
-        self.fontSize = self.vertSize*(ypx/2.0)
         self.rollText.set_size(self.fontSize)
         self.pitchText.set_size(self.fontSize)
         self.yawText.set_size(self.fontSize)
@@ -226,7 +228,6 @@ class HorizonFrame(wx.Frame):
         
     def calcHorizonPoints(self):
         '''Updates the verticies of the patches for the ground and sky.'''
-        self.ratio = self.figure.get_size_inches()[0]/float(self.figure.get_size_inches()[1])
         ydiff = math.tan(math.radians(-self.roll))*float(self.ratio)
         pitchdiff = self.dist10deg*(self.pitch/10.0)
         # Sky Polygon
@@ -247,8 +248,6 @@ class HorizonFrame(wx.Frame):
             self.pitchPatches.append(currPatch)
         # Add Label for +-30 deg
         self.vertSize = 0.09
-        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
-        self.fontSize = self.vertSize*(ypx/2.0)
         self.pitchLabelsLeft = []
         self.pitchLabelsRight = []
         i=0
@@ -296,26 +295,20 @@ class HorizonFrame(wx.Frame):
                 
     def createAARText(self):
         '''Creates the text for airspeed, altitude and climb rate.'''
-        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
-        self.fontSize = self.vertSize*(ypx/2.0)
-        rightPos = self.axes.get_xlim()[1]
-        self.airspeedText = self.axes.text(rightPos-(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0),'AS:   %.1f m/s' % self.airspeed,color='w',size=self.fontSize,ha='right')
-        self.altitudeText = self.axes.text(rightPos-(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0),'ALT: %.1f m   ' % self.relAlt,color='w',size=self.fontSize,ha='right')
-        self.climbRateText = self.axes.text(rightPos-(self.vertSize/10.0),-0.97,'CR:   %.1f m/s' % self.climbRate,color='w',size=self.fontSize,ha='right')
+        self.airspeedText = self.axes.text(self.rightPos-(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0),'AS:   %.1f m/s' % self.airspeed,color='w',size=self.fontSize,ha='right')
+        self.altitudeText = self.axes.text(self.rightPos-(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0),'ALT: %.1f m   ' % self.relAlt,color='w',size=self.fontSize,ha='right')
+        self.climbRateText = self.axes.text(self.rightPos-(self.vertSize/10.0),-0.97,'CR:   %.1f m/s' % self.climbRate,color='w',size=self.fontSize,ha='right')
         self.airspeedText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         self.altitudeText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         self.climbRateText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         
     def updateAARLocations(self):
         '''Update the locations of airspeed, altitude and Climb rate.'''
-        rightPos = self.axes.get_xlim()[1]
         # Locations
-        self.airspeedText.set_position((rightPos-(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0)))
-        self.altitudeText.set_position((rightPos-(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0)))
-        self.climbRateText.set_position((rightPos-(self.vertSize/10.0),-0.97))
+        self.airspeedText.set_position((self.rightPos-(self.vertSize/10.0),-0.97+(2*self.vertSize)-(self.vertSize/10.0)))
+        self.altitudeText.set_position((self.rightPos-(self.vertSize/10.0),-0.97+self.vertSize-(0.5*self.vertSize/10.0)))
+        self.climbRateText.set_position((self.rightPos-(self.vertSize/10.0),-0.97))
         # Font Size
-        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
-        self.fontSize = self.vertSize*(ypx/2.0)
         self.airspeedText.set_size(self.fontSize)
         self.altitudeText.set_size(self.fontSize)
         self.climbRateText.set_size(self.fontSize)
@@ -328,13 +321,12 @@ class HorizonFrame(wx.Frame):
     
     def createBatteryBar(self):
         '''Creates the bar to display current battery percentage.'''
-        rightPos = self.axes.get_xlim()[1]
-        self.batOutRec = patches.Rectangle((rightPos-(1.3+self.rOffset)*self.batWidth,1.0-(0.1+1.0+(2*0.075))*self.batHeight),self.batWidth*1.3,self.batHeight*1.15,facecolor='darkgrey',edgecolor='none')
-        self.batInRec = patches.Rectangle((rightPos-(self.rOffset+1+0.15)*self.batWidth,1.0-(0.1+1+0.075)*self.batHeight),self.batWidth,self.batHeight,facecolor='lawngreen',edgecolor='none')
-        self.batPerText = self.axes.text(rightPos - (self.rOffset+0.65)*self.batWidth,1-(0.1+1+(0.075+0.15))*self.batHeight,'%.f' % self.batRemain,color='w',size=self.fontSize,ha='center',va='top')
+        self.batOutRec = patches.Rectangle((self.rightPos-(1.3+self.rOffset)*self.batWidth,1.0-(0.1+1.0+(2*0.075))*self.batHeight),self.batWidth*1.3,self.batHeight*1.15,facecolor='darkgrey',edgecolor='none')
+        self.batInRec = patches.Rectangle((self.rightPos-(self.rOffset+1+0.15)*self.batWidth,1.0-(0.1+1+0.075)*self.batHeight),self.batWidth,self.batHeight,facecolor='lawngreen',edgecolor='none')
+        self.batPerText = self.axes.text(self.rightPos - (self.rOffset+0.65)*self.batWidth,1-(0.1+1+(0.075+0.15))*self.batHeight,'%.f' % self.batRemain,color='w',size=self.fontSize,ha='center',va='top')
         self.batPerText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
-        self.voltsText = self.axes.text(rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-(0.1+0.05+0.075)*self.batHeight,'%.1f V' % self.voltage,color='w',size=self.fontSize,ha='right',va='top')
-        self.ampsText = self.axes.text(rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-self.vertSize-(0.1+0.05+0.1+0.075)*self.batHeight,'%.1f A' % self.current,color='w',size=self.fontSize,ha='right',va='top')
+        self.voltsText = self.axes.text(self.rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-(0.1+0.05+0.075)*self.batHeight,'%.1f V' % self.voltage,color='w',size=self.fontSize,ha='right',va='top')
+        self.ampsText = self.axes.text(self.rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-self.vertSize-(0.1+0.05+0.1+0.075)*self.batHeight,'%.1f A' % self.current,color='w',size=self.fontSize,ha='right',va='top')
         self.voltsText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         self.ampsText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
         
@@ -343,16 +335,15 @@ class HorizonFrame(wx.Frame):
         
     def updateBatteryBar(self):
         '''Updates the position and values of the battery bar.'''
-        rightPos = self.axes.get_xlim()[1]
         # Bar
-        self.batOutRec.set_xy((rightPos-(1.3+self.rOffset)*self.batWidth,1.0-(0.1+1.0+(2*0.075))*self.batHeight))
-        self.batInRec.set_xy((rightPos-(self.rOffset+1+0.15)*self.batWidth,1.0-(0.1+1+0.075)*self.batHeight))
-        self.batPerText.set_position((rightPos - (self.rOffset+0.65)*self.batWidth,1-(0.1+1+(0.075+0.15))*self.batHeight))
+        self.batOutRec.set_xy((self.rightPos-(1.3+self.rOffset)*self.batWidth,1.0-(0.1+1.0+(2*0.075))*self.batHeight))
+        self.batInRec.set_xy((self.rightPos-(self.rOffset+1+0.15)*self.batWidth,1.0-(0.1+1+0.075)*self.batHeight))
+        self.batPerText.set_position((self.rightPos - (self.rOffset+0.65)*self.batWidth,1-(0.1+1+(0.075+0.15))*self.batHeight))
         self.batPerText.set_fontsize(self.fontSize)
         self.voltsText.set_text('%.1f V' % self.voltage)
         self.ampsText.set_text('%.1f A' % self.current)
-        self.voltsText.set_position((rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-(0.1+0.05)*self.batHeight))
-        self.ampsText.set_position((rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-self.vertSize-(0.1+0.05+0.1)*self.batHeight))
+        self.voltsText.set_position((self.rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-(0.1+0.05)*self.batHeight))
+        self.ampsText.set_position((self.rightPos-(self.rOffset+1.3+0.2)*self.batWidth,1-self.vertSize-(0.1+0.05+0.1)*self.batHeight))
         self.voltsText.set_fontsize(self.fontSize)
         self.ampsText.set_fontsize(self.fontSize)
         if self.batRemain >= 0:
@@ -370,18 +361,12 @@ class HorizonFrame(wx.Frame):
         
     def createStateText(self):
         '''Creates the mode and arm state text.'''
-        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
-        self.fontSize = self.vertSize*(ypx/2.0)
-        leftPos = self.axes.get_xlim()[0]
-        self.modeText = self.axes.text(leftPos+(self.vertSize/10.0),0.97,'UNKNOWN',color='grey',size=1.5*self.fontSize,ha='left',va='top')
+        self.modeText = self.axes.text(self.leftPos+(self.vertSize/10.0),0.97,'UNKNOWN',color='grey',size=1.5*self.fontSize,ha='left',va='top')
         self.modeText.set_path_effects([PathEffects.withStroke(linewidth=self.fontSize/10.0,foreground='black')])
         
     def updateStateText(self):
         '''Updates the mode and colours red or green depending on arm state.'''
-        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
-        self.fontSize = self.vertSize*(ypx/2.0)
-        leftPos = self.axes.get_xlim()[0]
-        self.modeText.set_position((leftPos+(self.vertSize/10.0),0.97))
+        self.modeText.set_position((self.leftPos+(self.vertSize/10.0),0.97))
         self.modeText.set_text(self.mode)
         self.modeText.set_size(1.5*self.fontSize)
         if self.armed:
@@ -400,18 +385,12 @@ class HorizonFrame(wx.Frame):
     def createWPText(self):
         '''Creates the text for the current and final waypoint,
         and the distance to the new waypoint.'''
-        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
-        self.fontSize = self.vertSize*(ypx/2.0)
-        leftPos = self.axes.get_xlim()[0]
-        self.wpText = self.axes.text(leftPos+(1.5*self.vertSize/10.0),0.97-(1.5*self.vertSize)+(0.5*self.vertSize/10.0),'0/0\n(0 m, 0 s)',color='w',size=self.fontSize,ha='left',va='top')
+        self.wpText = self.axes.text(self.leftPos+(1.5*self.vertSize/10.0),0.97-(1.5*self.vertSize)+(0.5*self.vertSize/10.0),'0/0\n(0 m, 0 s)',color='w',size=self.fontSize,ha='left',va='top')
         self.wpText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='black')])
         
     def updateWPText(self):
         '''Updates the current waypoint and distance to it.''' 
-        ypx = self.figure.get_size_inches()[1]*self.figure.dpi
-        self.fontSize = self.vertSize*(ypx/2.0)
-        leftPos = self.axes.get_xlim()[0]
-        self.wpText.set_position((leftPos+(1.5*self.vertSize/10.0),0.97-(1.5*self.vertSize)+(0.5*self.vertSize/10.0)))
+        self.wpText.set_position((self.leftPos+(1.5*self.vertSize/10.0),0.97-(1.5*self.vertSize)+(0.5*self.vertSize/10.0)))
         self.wpText.set_size(self.fontSize)
         if type(self.nextWPTime) is str:
             self.wpText.set_text('%.f/%.f\n(%.f m, ~ s)' % (self.currentWP,self.finalWP,self.wpDist))
@@ -447,6 +426,7 @@ class HorizonFrame(wx.Frame):
         '''To adjust text and positions on rescaling the window.'''
         # Fix Window Scales 
         self.rescaleX()
+        self.calcFontScaling()
         
         # Recalculate Horizon Polygons
         self.calcHorizonPoints()
@@ -493,6 +473,7 @@ class HorizonFrame(wx.Frame):
         # Get attitude information
         while state.child_pipe_recv.poll():
             obj = state.child_pipe_recv.recv()
+            self.calcFontScaling()
             if isinstance(obj,Attitude):
                 self.oldRoll = self.roll
                 self.pitch = obj.pitch*180/math.pi
