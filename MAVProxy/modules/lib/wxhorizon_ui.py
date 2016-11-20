@@ -50,7 +50,8 @@ class HorizonFrame(wx.Frame):
 
         # Initialise Mode and State
         self.mode = 'UNKNOWN'
-        self.armed = False
+        self.armed = ''
+        self.safetySwitch = ''
         
         # Intialise Waypoint Information
         self.currentWP = 0
@@ -372,7 +373,8 @@ class HorizonFrame(wx.Frame):
         ypx = self.figure.get_size_inches()[1]*self.figure.dpi
         self.fontSize = self.vertSize*(ypx/2.0)
         leftPos = self.axes.get_xlim()[0]
-        self.modeText = self.axes.text(leftPos+(self.vertSize/10.0),0.97,'UNKNOWN',color='lightgreen',size=1.5*self.fontSize,ha='left',va='top')
+        self.modeText = self.axes.text(leftPos+(self.vertSize/10.0),0.97,'UNKNOWN',color='grey',size=1.5*self.fontSize,ha='left',va='top')
+        self.modeText.set_path_effects([PathEffects.withStroke(linewidth=self.fontSize/10.0,foreground='black')])
         
     def updateStateText(self):
         '''Updates the mode and colours red or green depending on arm state.'''
@@ -385,11 +387,16 @@ class HorizonFrame(wx.Frame):
         if self.armed:
             self.modeText.set_color('red')
             self.modeText.set_path_effects([PathEffects.withStroke(linewidth=self.fontSize/10.0,foreground='yellow')])
-        else:
+        elif (self.armed == False):
             self.modeText.set_color('lightgreen')
             self.modeText.set_bbox(None)
-            self.modeText.set_path_effects(None)
-            
+            self.modeText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='black')])
+        else:
+            # Fall back if unknown
+            self.modeText.set_color('grey')
+            self.modeText.set_bbox(None)
+            self.modeText.set_path_effects([PathEffects.withStroke(linewidth=self.fontSize/10.0,foreground='black')])
+        
     def createWPText(self):
         '''Creates the text for the current and final waypoint,
         and the distance to the new waypoint.'''
@@ -397,6 +404,7 @@ class HorizonFrame(wx.Frame):
         self.fontSize = self.vertSize*(ypx/2.0)
         leftPos = self.axes.get_xlim()[0]
         self.wpText = self.axes.text(leftPos+(1.5*self.vertSize/10.0),0.97-(1.5*self.vertSize)+(0.5*self.vertSize/10.0),'0/0\n(0 m, 0 s)',color='w',size=self.fontSize,ha='left',va='top')
+        self.wpText.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='black')])
         
     def updateWPText(self):
         '''Updates the current waypoint and distance to it.''' 
