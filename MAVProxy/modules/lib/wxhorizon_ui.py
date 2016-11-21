@@ -119,6 +119,10 @@ class HorizonFrame(wx.Frame):
         # Create Waypoint Pointer
         self.createWPPointer()
         
+        # Create Altimeter
+        self.createAltimeter()
+        self.updateAltimeter()
+        
         # Show Frame
         self.Show(True)
         self.pending = []
@@ -442,6 +446,67 @@ class HorizonFrame(wx.Frame):
         self.headingWPText.set_rotation(-headRot)
         self.headingWPTri.set_transform(headingRotate)
         self.headingWPText.set_text('%.f' % (angle))
+        
+    def createAltimeter(self):
+        '''Creates the text and boxes for the altimeter.'''
+        self.altRect = patches.Rectangle((-1.0+(self.vertSize/10.0),-0.05),0.25,0.1,facecolor='grey',edgecolor='k',zorder=4)
+        self.axes.add_patch(self.altRect)
+        self.altText1 = self.axes.text(self.altRect.get_x()+(self.altRect.get_width()/6.0),-0.075*self.altRect.get_height(),'0\n1\n2',color='w',size=self.fontSize,ha='center',va='center',clip_on=True,zorder=4)
+        self.altText1.set_clip_path(self.altRect)
+        self.altText1.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        self.altText2 = self.axes.text(self.altRect.get_x()+(self.altRect.get_width()/2.0),-0.075*self.altRect.get_height(),'0\n1\n2',color='w',size=self.fontSize,ha='center',va='center',clip_on=True,zorder=4)
+        self.altText2.set_clip_path(self.altRect)
+        self.altText2.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        self.altText3 = self.axes.text(self.altRect.get_x()+(5.0*self.altRect.get_width()/6.0),-0.075*self.altRect.get_height(),'0\n1\n2',color='w',size=self.fontSize,ha='center',va='center',clip_on=True,zorder=4)
+        self.altText3.set_clip_path(self.altRect)
+        self.altText3.set_path_effects([PathEffects.withStroke(linewidth=1,foreground='k')])
+        
+    def updateAltimeter(self):
+        '''Updates the altimeter information.'''
+        self.altRect.set_x(self.leftPos+(self.vertSize/10.0))
+        # Split altitude into single digits
+        if self.relAlt <=0:
+            altStr = '000'
+            fraction1 = fraction2 = fraction3 = 0.0
+        else:
+            altStr = '%03d' % self.relAlt 
+            fraction1 = (self.relAlt % 100)/100.0
+            fraction2 = (self.relAlt % 10)/10.0
+            fraction3 = (self.relAlt % 1)
+                  
+        def calcOutFrac(fraction,scrollLimits):
+            '''Caclulates the vertical difference fraction
+            based on starting at limits given in scroll limits.'''
+            
+            m1 = (1.0)/(1.0-scrollLimits[1])
+            m2 = (-1.0)/(-scrollLimits[0])         
+            if fraction >= 0.9:
+                # Start scaling
+                outFrac = m1*(fraction-scrollLimits[1])
+            elif fraction <= 0.1:
+                outFrac = m2*(fraction-scrollLimits[0])
+            else:
+                outFrac = 0.0
+            return outFrac
+        outFrac1 = calcOutFrac(fraction1,[0.02,0.98])
+        outFrac2 = calcOutFrac(fraction2,[0.2,0.8])
+        outFrac3 = calcOutFrac(fraction3,[0.5,0.5])
+        numStr = '001234567890'
+        self.altText1.set_text(numStr[int(altStr[0])]+'\n'+numStr[int(altStr[0])+1]+'\n'+numStr[int(altStr[0])+2])
+        self.altText2.set_text(numStr[int(altStr[1])]+'\n'+numStr[int(altStr[1])+1]+'\n'+numStr[int(altStr[1])+2])
+        self.altText3.set_text(numStr[int(altStr[2])]+'\n'+numStr[int(altStr[2])+1]+'\n'+numStr[int(altStr[2])+2])
+        self.altText1.set_y((outFrac1-0.075)*self.altRect.get_height())
+        self.altText2.set_y((outFrac2-0.075)*self.altRect.get_height())
+        self.altText3.set_y((outFrac3-0.075)*self.altRect.get_height())
+        self.altText1.set_size(self.fontSize)
+        self.altText2.set_size(self.fontSize)
+        self.altText3.set_size(self.fontSize)
+        self.altText1.set_x(self.altRect.get_x()+(1.0*self.altRect.get_width()/6.0))
+        self.altText2.set_x(self.altRect.get_x()+(1.0*self.altRect.get_width()/2.0))
+        self.altText3.set_x(self.altRect.get_x()+(5.0*self.altRect.get_width()/6.0))
+        self.altText1.set_clip_path(self.altRect)
+        self.altText2.set_clip_path(self.altRect)
+        self.altText3.set_clip_path(self.altRect)
     
     # =============== Event Bindings =============== #    
     def on_idle(self, event):
@@ -481,6 +546,9 @@ class HorizonFrame(wx.Frame):
             
             # Adjust Waypoint Pointer
             self.adjustWPPointer()
+            
+            # Adjust Altimeter
+            self.updateAltimeter()
             
             # Update Matplotlib Plot
             self.canvas.draw()
@@ -543,6 +611,9 @@ class HorizonFrame(wx.Frame):
                 
                 # Update Airpseed, Altitude, Climb Rate Locations
                 self.updateAARText()
+                
+                # Update Altimeter
+                self.updateAltimeter()
                 
             elif isinstance(obj,BatteryInfo):
                 self.voltage = obj.voltage
