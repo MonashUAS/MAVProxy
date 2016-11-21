@@ -45,13 +45,16 @@ If it doesn't install correctly the first time, run the above command again, thi
 module load horizon
 ```
 
-There are 6 main components.
+There are 7 main components.
 * Aritifical Horizon Indicator
 * Roll, Pitch, Yaw Values
 * Airspeed, Altitude, Climb Rate Values
 * Battery Indication
 * Mode and Waypoint Information
 * Heading Indication
+* Altitude Plot
+
+Each component excluding the horizon indicator, can be toggled visbile/hidden by pressing the numbers 1-6 (not numpad numbers).
 
 ### Artificial Horizon Indicator
 The artifical horizon indicator displays the ground and sky based on the current roll angle and pitch angle of the aircraft. The distance between pitch marker lines can be changed by using the UP and DOWN arrow keys.
@@ -70,6 +73,9 @@ Located in the top left corner, the vehicle mode is displayed in either green, f
 
 ### Heading Indication
 The heading indication is given by the three arrows that move around the center of the screen. The direction of the arrows are relative to the plane that is parallel to the surface of the Earth, rather than relative to the current displayed orientation by the artificial horizon indicator. The top arrow will remain in this position, and gives the current heading of the vehicle. The North point moves around the circle and points towards north, while the green pointer points to the current waypoint or point of interest, with the relative heading displayed below the pointer.
+
+### Altitude Plot
+The altitude of the vehicle is shown for the last 10 seconds. The minimum is always set as zero, while the maximum is set as the maximum altitude since the module was loaded.
 
 License
 -------
