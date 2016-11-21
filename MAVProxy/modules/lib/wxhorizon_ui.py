@@ -72,6 +72,7 @@ class HorizonFrame(wx.Frame):
         # Create Panel
         self.panel = wx.Panel(self)
         self.vertSize = 0.09
+        self.resized = False
         
         # Create Matplotlib Panel
         self.createPlotPanel()
@@ -144,9 +145,22 @@ class HorizonFrame(wx.Frame):
     def calcFontScaling(self):
         '''Calculates the current font size and left position for the current window.'''
         self.ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+        self.xpx = self.figure.get_size_inches()[0]*self.figure.dpi
         self.fontSize = self.vertSize*(self.ypx/2.0)
         self.leftPos = self.axes.get_xlim()[0]
         self.rightPos = self.axes.get_xlim()[1]
+    
+    def checkReszie(self):
+        '''Checks if the window was resized.'''
+        if not self.resized:
+            oldypx = self.ypx
+            oldxpx = self.xpx
+            self.ypx = self.figure.get_size_inches()[1]*self.figure.dpi
+            self.xpx = self.figure.get_size_inches()[0]*self.figure.dpi
+            if (oldypx != self.ypx) or (oldxpx != self.xpx):
+                self.resized = True
+            else:
+                self.resized = False
     
     def createHeadingPointer(self):
         '''Creates the pointer for the current heading.'''
@@ -431,43 +445,48 @@ class HorizonFrame(wx.Frame):
     
     # =============== Event Bindings =============== #    
     def on_idle(self, event):
-        '''To adjust text and positions on rescaling the window.'''
-        # Fix Window Scales 
-        self.rescaleX()
-        self.calcFontScaling()
+        '''To adjust text and positions on rescaling the window when resized.'''
+        # Check for resize
+        self.checkReszie()
         
-        # Recalculate Horizon Polygons
-        self.calcHorizonPoints()
-        
-        # Update Roll, Pitch, Yaw Text Locations
-        self.updateRPYLocations()
-        
-        # Update Airpseed, Altitude, Climb Rate Locations
-        self.updateAARLocations()
-        
-        # Update Pitch Markers
-        self.adjustPitchmarkers()
-        
-        # Update Heading and North Pointer
-        self.adjustHeadingPointer()
-        self.adjustNorthPointer()
-        
-        # Update Battery Bar
-        self.updateBatteryBar()
-        
-        # Update Mode and State
-        self.updateStateText()
-        
-        # Update Waypoint Text
-        self.updateWPText()
-        
-        # Adjust Waypoint Pointer
-        self.adjustWPPointer()
-        
-        # Update Matplotlib Plot
-        self.canvas.draw()
-        self.canvas.Refresh()
-        
+        if self.resized:
+            # Fix Window Scales 
+            self.rescaleX()
+            self.calcFontScaling()
+            
+            # Recalculate Horizon Polygons
+            self.calcHorizonPoints()
+            
+            # Update Roll, Pitch, Yaw Text Locations
+            self.updateRPYLocations()
+            
+            # Update Airpseed, Altitude, Climb Rate Locations
+            self.updateAARLocations()
+            
+            # Update Pitch Markers
+            self.adjustPitchmarkers()
+            
+            # Update Heading and North Pointer
+            self.adjustHeadingPointer()
+            self.adjustNorthPointer()
+            
+            # Update Battery Bar
+            self.updateBatteryBar()
+            
+            # Update Mode and State
+            self.updateStateText()
+            
+            # Update Waypoint Text
+            self.updateWPText()
+            
+            # Adjust Waypoint Pointer
+            self.adjustWPPointer()
+            
+            # Update Matplotlib Plot
+            self.canvas.draw()
+            self.canvas.Refresh()
+            
+            self.resized = False
         
         time.sleep(0.05)
  
@@ -478,6 +497,12 @@ class HorizonFrame(wx.Frame):
             self.timer.Stop()
             self.Destroy()
             return
+        
+        # Check for resizing
+        self.checkReszie()
+        if self.resized:
+            self.on_idle(0)
+        
         # Get attitude information
         while state.child_pipe_recv.poll():
             obj = state.child_pipe_recv.recv()
@@ -580,5 +605,4 @@ class HorizonFrame(wx.Frame):
         elif event.GetKeyCode() == 53: # 5
             widgets = [self.headingTri,self.headingText,self.headingNorthTri,self.headingNorthText,self.headingWPTri,self.headingWPText]
             self.toggleWidgets(widgets)
-            
 
