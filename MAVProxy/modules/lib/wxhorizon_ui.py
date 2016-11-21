@@ -1,7 +1,7 @@
 import time
 from wxhorizon_util import Attitude, VFR_HUD, Global_Position_INT, BatteryInfo, FlightState, WaypointInfo
 from wx_loader import wx
-import math
+import math, time
 
 import matplotlib
 matplotlib.use('wxAgg')
@@ -24,7 +24,7 @@ class HorizonFrame(wx.Frame):
         # Initialisation
         self.initData()
         self.initUI()
-
+        self.startTime = time.time()
 
     def initData(self):
         # Initialise Attitude
@@ -39,6 +39,9 @@ class HorizonFrame(wx.Frame):
         self.airspeed = 0.0 # m/s
         self.relAlt = 0.0 # m relative to home position
         self.climbRate = 0.0 # m/s
+        self.altHist = [] # Altitude History
+        self.timeHist = [] # Time History
+        self.altMax = 0.0 # Maximum altitude since startup
         
         # Initialise HUD Info
         self.heading = 0.0 # 0-360
@@ -118,6 +121,9 @@ class HorizonFrame(wx.Frame):
         
         # Create Waypoint Pointer
         self.createWPPointer()
+        
+        # Create Altitude History Plot
+        self.createAltHistoryPlot()
         
         # Show Frame
         self.Show(True)
@@ -440,6 +446,70 @@ class HorizonFrame(wx.Frame):
         self.headingWPTri.set_transform(headingRotate)
         self.headingWPText.set_text('%.f' % (angle))
     
+    def createAltHistoryPlot(self):
+        '''Creates the altitude history plot.'''
+        self.altHistRect = patches.Rectangle((self.leftPos+(self.vertSize/10.0),-0.25),0.5,0.5,facecolor='grey',edgecolor='none',alpha=0.4,zorder=4)
+        self.axes.add_patch(self.altHistRect)
+        self.altPlot, = self.axes.plot([self.leftPos+(self.vertSize/10.0),self.leftPos+(self.vertSize/10.0)+0.5],[0.0,0.0],color='k',marker=None,zorder=4)
+        self.altMarker, = self.axes.plot(self.leftPos+(self.vertSize/10.0)+0.5,0.0,marker='o',color='k',zorder=4)
+        self.altText2 = self.axes.text(self.leftPos+(4*self.vertSize/10.0)+0.5,0.0,'%.f m' % self.relAlt,color='k',size=self.fontSize,ha='left',va='center',zorder=4)
+    
+    def updateAltHistory(self):
+        '''Updates the altitude history plot.'''
+        self.altHist.append(self.relAlt)
+        self.timeHist.append(time.time())
+        
+        # Delete entries older than x seconds
+        histLim = 10
+        currentTime = time.time()
+        point = 0
+        for i in range(0,len(self.timeHist)):
+            if (self.timeHist[i] > (currentTime - 10.0)):
+                break
+        # Remove old entries
+        self.altHist = self.altHist[i:]
+        self.timeHist = self.timeHist[i:]
+        
+        # Transform Data
+        x = []
+        y = []
+        tmin = min(self.timeHist)
+        tmax = max(self.timeHist)
+        x1 = self.leftPos+(self.vertSize/10.0)
+        y1 = -0.25
+        altMin = 0
+        altMax = max(self.altHist)
+        # Keep alt max for whole mission
+        if altMax > self.altMax:
+            self.altMax = altMax
+        else:
+            altMax = self.altMax
+        if tmax != tmin:
+            mx = 0.5/(tmax-tmin)
+        else:
+            mx = 0.0
+        if altMax != altMin:
+            my = 0.5/(altMax-altMin)
+        else:
+            my = 0.0
+        for t in self.timeHist:
+            x.append(mx*(t-tmin)+x1)
+        for alt in self.altHist:
+            val = my*(alt-altMin)+y1
+            # Crop extreme noise
+            if val < -0.25:
+                val = -0.25
+            elif val > 0.25:
+                val = 0.25
+            y.append(val)
+        # Display Plot
+        self.altHistRect.set_x(self.leftPos+(self.vertSize/10.0))
+        self.altPlot.set_data(x,y)
+        self.altMarker.set_data(self.leftPos+(self.vertSize/10.0)+0.5,val)
+        self.altText2.set_position((self.leftPos+(4*self.vertSize/10.0)+0.5,val))
+        self.altText2.set_size(self.fontSize)
+        self.altText2.set_text('%.f m' % self.relAlt)
+        
     # =============== Event Bindings =============== #    
     def on_idle(self, event):
         '''To adjust text and positions on rescaling the window when resized.'''
@@ -478,6 +548,9 @@ class HorizonFrame(wx.Frame):
             
             # Adjust Waypoint Pointer
             self.adjustWPPointer()
+            
+            # Update History Plot
+            self.updateAltHistory()
             
             # Update Matplotlib Plot
             self.canvas.draw()
@@ -518,10 +591,6 @@ class HorizonFrame(wx.Frame):
                 
                 # Update Pitch Markers
                 self.adjustPitchmarkers()
-                
-                # Update Matplotlib Plot
-                self.canvas.draw()
-                self.canvas.Refresh()
             
             elif isinstance(obj,VFR_HUD):
                 self.heading = obj.heading
@@ -540,6 +609,9 @@ class HorizonFrame(wx.Frame):
                 
                 # Update Airpseed, Altitude, Climb Rate Locations
                 self.updateAARText()
+                
+                # Update Altitude History
+                self.updateAltHistory()
                 
             elif isinstance(obj,BatteryInfo):
                 self.voltage = obj.voltage
@@ -572,7 +644,10 @@ class HorizonFrame(wx.Frame):
                 # Adjust Waypoint Pointer
                 self.adjustWPPointer()
                 
-                                
+        # Update Matplotlib Plot
+        self.canvas.draw()
+        self.canvas.Refresh()                   
+             
         self.Refresh()
         self.Update()
                 
@@ -600,6 +675,15 @@ class HorizonFrame(wx.Frame):
             widgets = [self.airspeedText,self.altitudeText,self.climbRateText]
             self.toggleWidgets(widgets)
         elif event.GetKeyCode() == 53: # 5
+            widgets = [self.altHistRect,self.altPlot,self.altMarker,self.altText2]
+            self.toggleWidgets(widgets)
+        elif event.GetKeyCode() == 54: # 6
             widgets = [self.headingTri,self.headingText,self.headingNorthTri,self.headingNorthText,self.headingWPTri,self.headingWPText]
             self.toggleWidgets(widgets)
-
+            
+        # Update Matplotlib Plot
+        self.canvas.draw()
+        self.canvas.Refresh()                       
+        
+        self.Refresh()
+        self.Update()
