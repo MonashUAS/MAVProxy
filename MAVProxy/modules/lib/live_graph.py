@@ -23,6 +23,7 @@ class LiveGraph():
                  title='MAVProxy: LiveGraph',
                  timespan=20.0,
                  tickresolution=0.2,
+                 ylims=[],
                  colors=[ 'red', 'green', 'blue', 'orange', 'olive', 'cyan', 'magenta', 'brown', 'dark green',
                           'violet', 'purple', 'grey', 'black']):
         import multiprocessing
@@ -31,6 +32,7 @@ class LiveGraph():
         self.title  = title
         self.timespan = timespan
         self.tickresolution = tickresolution
+	self.ylims = ylims
         self.values = [None]*len(self.fields)
 
         self.parent_pipe,self.child_pipe = multiprocessing.Pipe()
