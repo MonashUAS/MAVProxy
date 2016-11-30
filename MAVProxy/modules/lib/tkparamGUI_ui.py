@@ -1,5 +1,6 @@
 from MAVProxy.modules.lib import mp_util
 from tkparamGUI_util import *
+import os.path
 import tkinter as tk
 import xml.etree.ElementTree
 
@@ -21,20 +22,22 @@ class ParamGUIFrame(tk.Frame):
 
     	# Add data to tree
     	self.docs = {}
-        xml_path = mp_util.dot_mavproxy("ArduPlane.xml")
-    	e = xml.etree.ElementTree.parse(xml_path).getroot()
-    	for param in e.iter('param'):
-    	    name = param.attrib['name'].split(':')[-1].upper()
-    	    self.docs[name] = param
-    	    data = (name, param.attrib['humanName'])
-            self.etv.insert('', "end", values=data)
+        xml_path = path = mp_util.dot_mavproxy("%s.xml" % self.state.vehicle_name)
+        if os.path.exists(xml_path):
+            e = xml.etree.ElementTree.parse(xml_path).getroot()
+            for param in e.iter('param'):
+                name = param.attrib['name'].split(':')[-1].upper()
+                self.docs[name] = param
+                self.etv.insert('', "end", values=(name, param.attrib['humanName']))
+        else:
+            print("Please run 'param download' first (vehicle_name=%s)" % self.state.vehicle_name)
 
     	# Sort and update tree
     	self.etv_items = self.etv.get_children('')
     	self.sort_desc = False   # ascending
     	self.__update()
 
-        self.on_timer() # start timer
+        self.on_timer()   # start timer
 
     def __build_gui(self):
     	from pygubu.widgets import tkscrollbarhelper, editabletreeview
@@ -60,7 +63,7 @@ class ParamGUIFrame(tk.Frame):
     	searchEntry.bind("<KeyRelease>", self.on_search_key)
 
     	# Treeview
-    	self.etv = editabletreeview.EditableTreeview(height=20, columns=("name", "val"), selectmode="browse", show="headings")
+    	self.etv = editabletreeview.EditableTreeview(height=20, columns=("name", "value"), selectmode="browse", show="headings")
     	self.etv.bind("<<TreeviewCellEdited>>", self.on_cell_changed)
     	self.etv.bind("<Double-1>", self.on_cell_double_click)
     	self.etv.bind("<FocusOut>", self.on_cell_focus_out)
@@ -70,8 +73,8 @@ class ParamGUIFrame(tk.Frame):
     	# Treeview columns
     	self.etv.heading("name", text=u"Parameter \u2227", command=self.on_sort_click, anchor="w")
     	self.etv.column("name", stretch=True, minwidth=20, width=160, anchor="w")
-    	self.etv.heading("val", text="Value", anchor="w")
-    	self.etv.column("val", stretch=True, minwidth=20, width=240, anchor="w")
+    	self.etv.heading("value", text="Value", anchor="w")
+    	self.etv.column("value", stretch=True, minwidth=20, width=240, anchor="w")
 
     	# Treeview scrollbar
     	scrollbar = tkscrollbarhelper.TkScrollbarHelper(master=frame1, scrolltype="vertical")
@@ -162,7 +165,7 @@ class ParamGUIFrame(tk.Frame):
     	item = self.__get_selection()
     	if item == None:
     	    return
-        self.etv.inplace_entry('val', item)
+        self.etv.inplace_entry("value", item)
     	self.etv._EditableTreeview__updateWnds()
 
     def on_cell_focus_out(self, event):
@@ -172,7 +175,7 @@ class ParamGUIFrame(tk.Frame):
         item = self.__get_selection()
     	if item == None:
     	    return
-        print 'Item {0} was changed to {1}'.format(item, self.etv.set(item, "val"))
+        print 'Item {0} was changed to {1}'.format(item, self.etv.set(item, "value"))
 
     def on_fetch_click(self, event):
         self.state.pipe_gui.send(ParamFetch())
@@ -181,7 +184,7 @@ class ParamGUIFrame(tk.Frame):
         item = self.__get_selection()
     	if item == None:
     	    return
-        param = Param(self.etv.set(item, "name"), self.etv.set(item, "val"))
+        param = Param(self.etv.set(item, "name"), self.etv.set(item, "value"))
         self.state.pipe_gui.send(ParamSendList([param]))
 
     def on_search_key(self, event):
@@ -195,16 +198,22 @@ class ParamGUIFrame(tk.Frame):
 
     def on_timer(self):
         '''Main Loop.'''
+        # Check if module has been unloaded
         if self.state.close_event.wait(0.001):
-            self.mainwindow.destroy()
+            self.mainwindow.destroy()   # close GUI
             return
+
         # Get messages
         while self.state.pipe_gui.poll():
             obj = self.state.pipe_gui.recv()
             if isinstance(obj, ParamUpdateList):
                 for param in obj.params:
-                    self.__parse_param(param)
+                    self.__update_param(param)
         self.mainwindow.after(100, self.on_timer)
 
-    def __parse_param(self, param):
-        print "Update '{0}' to '{1}'.".format(param.name, param.value)
+    def __update_param(self, param):
+        for item_id in self.etv_items:
+            if param.name == self.etv.set(item_id, "name"):
+                self.etv.set(item_id, "value", param.value)
+                return
+        print "Parameter '" + param.name + "' doesn't exist."

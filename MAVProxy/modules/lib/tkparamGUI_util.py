@@ -1,15 +1,15 @@
 class ParamUpdateList():
-    '''List of parameters to be updated. Sent from MAVProxy to GUI.'''
+    '''List of parameters to be updated. Sent from module to GUI.'''
     def __init__(self, params):
         self.params = params
 
 class ParamSendList():
-    '''List of parameters to be sent to the aircraft. Sent from GUI to MAVProxy.'''
+    '''List of parameters to be sent to the aircraft. Sent from GUI to module.'''
     def __init__(self, params):
         self.params = params
 
 class ParamFetch():
-    '''Message to initiate a parameter fetch. Sent from GUI to MAVProxy.'''
+    '''Message to initiate a parameter fetch. Sent from GUI to module.'''
     pass
 
 class Param():

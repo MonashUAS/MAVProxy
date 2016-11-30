@@ -10,26 +10,36 @@ class ParameterEditor():
     '''
     Graphical parameter editor for MAVProxy.
     '''
-    def __init__(self, title='MAVProxy: Parameter Editor'):
+    def __init__(self, vehicle_name, title="MAVProxy: Parameter Editor"):
         self.title  = title
-        # Create Pipe to send attitude information from module to UI
-        self.pipe_gui, self.pipe_mavproxy = multiprocessing.Pipe(duplex=True)
-        #self.child_pipe_recv, self.parent_pipe_send = multiprocessing.Pipe(duplex=False)
+        self.vehicle_name = vehicle_name
+
+        # Create pipe to send information between module and GUI
+        self.pipe_gui, self.pipe_module = multiprocessing.Pipe(duplex=True)
+
+        # Create event which is fired when the GUI is closed or module unloaded
         self.close_event = multiprocessing.Event()
         self.close_event.clear()
+
+        # Start GUI in another proccess
         self.child = multiprocessing.Process(target=self.child_task)
         self.child.start()
+
+        # Don't allow module to send from pipe_gui
         self.pipe_gui.close()
 
     def child_task(self):
-        self.pipe_mavproxy.close()
+        # Don't allow GUI to send from pipe_module
+        self.pipe_module.close()
 
+        # Create app window
         import tkinter as tk
         from tkparamGUI_ui import ParamGUIFrame
         app = tk.Tk()
     	app.title(self.title)
         app.frame = ParamGUIFrame(state=self, mainwindow=app)
         app.mainloop()
+        self.close_event.set()   # indicate that the GUI has closed
 
     def close(self):
         '''Close the window.'''
@@ -42,7 +52,6 @@ class ParameterEditor():
         return self.child.is_alive()
 
 if __name__ == "__main__":
-    # test the console
     multiprocessing.freeze_support()
     paramGUI = ParameterEditor()
     while paramGUI.is_alive():

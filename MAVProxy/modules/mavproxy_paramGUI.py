@@ -12,21 +12,23 @@ class paramGUI(mp_module.MPModule):
         """Initialise module"""
         super(paramGUI, self).__init__(mpstate, "paramGUI", "Graphical Parameter Editor")
         self.mpstate = mpstate
-        self.gui = tkparamGUI.ParameterEditor(title='Parameter Editor')
+        self.gui = tkparamGUI.ParameterEditor(vehicle_name=self.vehicle_name, title='Parameter Editor')
 
-        param1 = Param("TEST_PARAMETER_NAME1", "new value one")
-        param2 = Param("TEST_PARAMETER_NAME2", "new value two")
-        param3 = Param("TEST_PARAMETER_NAME3", "new value three")
+        param1 = Param("ACRO_PITCH_RATE", "new value one")
+        param2 = Param("ADSB_EMIT_TYPE", "new value two")
+        param3 = Param("ADSB_ICAO_ID", "new value three")
 
-        self.gui.pipe_mavproxy.send(ParamUpdateList([param1, param2, param3]))
+        self.gui.pipe_module.send(ParamUpdateList([param1, param2, param3]))
 
     def idle_task(self):
+        # Check if GUI has been closed
         if self.gui.close_event.wait(0.001):
-            self.mainwindow.destroy()
+            self.needs_unloading = True   # tell MAVProxy to unload this module
             return
+
         # Get messages
-        while self.gui.pipe_mavproxy.poll():
-            obj = self.gui.pipe_mavproxy.recv()
+        while self.gui.pipe_module.poll():
+            obj = self.gui.pipe_module.recv()
             if isinstance(obj, ParamSendList):
                 for param in obj.params:
                     print "Send '{0}' with value '{1}'.".format(param.name, param.value)
