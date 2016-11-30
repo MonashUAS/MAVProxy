@@ -60,7 +60,7 @@ class ParamGUIFrame(tk.Frame):
     	searchEntry.bind("<KeyRelease>", self.on_search_key)
 
     	# Treeview
-    	self.etv = editabletreeview.EditableTreeview(height=20, columns=("param", "val"), selectmode="browse", show="headings")
+    	self.etv = editabletreeview.EditableTreeview(height=20, columns=("name", "val"), selectmode="browse", show="headings")
     	self.etv.bind("<<TreeviewCellEdited>>", self.on_cell_changed)
     	self.etv.bind("<Double-1>", self.on_cell_double_click)
     	self.etv.bind("<FocusOut>", self.on_cell_focus_out)
@@ -68,8 +68,8 @@ class ParamGUIFrame(tk.Frame):
     	self.etv.bind("<<TreeviewSelect>>", self.on_cell_selected, add=True)
 
     	# Treeview columns
-    	self.etv.heading("param", text=u"Parameter \u2227", command=self.on_sort_click, anchor="w")
-    	self.etv.column("param", stretch=True, minwidth=20, width=160, anchor="w")
+    	self.etv.heading("name", text=u"Parameter \u2227", command=self.on_sort_click, anchor="w")
+    	self.etv.column("name", stretch=True, minwidth=20, width=160, anchor="w")
     	self.etv.heading("val", text="Value", anchor="w")
     	self.etv.column("val", stretch=True, minwidth=20, width=240, anchor="w")
 
@@ -96,7 +96,7 @@ class ParamGUIFrame(tk.Frame):
     	btn.bind("<ButtonRelease-1>", callback)
 
     def __update(self):
-        params = [(self.etv.set(item_id, 'param'), item_id) for item_id in self.etv_items]
+        params = [(self.etv.set(item_id, "name"), item_id) for item_id in self.etv_items]
         params.sort(reverse=self.sort_desc)
 
         for indx, item in enumerate(params):   # item: (item value, item_id)
@@ -133,9 +133,9 @@ class ParamGUIFrame(tk.Frame):
 
     	self.sort_desc = not self.sort_desc
     	if self.sort_desc:
-    	    self.etv.heading("param", text=u"Parameter \u2228")   # down arrow
+    	    self.etv.heading("name", text=u"Parameter \u2228")   # down arrow
     	else:
-    	    self.etv.heading("param", text=u"Parameter \u2227")   # up arrow
+    	    self.etv.heading("name", text=u"Parameter \u2227")   # up arrow
 
     	self.__update()
 
@@ -144,7 +144,7 @@ class ParamGUIFrame(tk.Frame):
         if item == None:
             self.__set_docs_text("")
             return
-        param = self.etv.set(item, "param")
+        param = self.etv.set(item, "name")
 
         docs = self.docs[param]
         doc_string = param + ":\n" + docs.attrib['humanName'] + "\n\n" + docs.attrib['documentation'] + "\n\n"
@@ -175,10 +175,14 @@ class ParamGUIFrame(tk.Frame):
         print 'Item {0} was changed to {1}'.format(item, self.etv.set(item, "val"))
 
     def on_fetch_click(self, event):
-        print "fetch"
+        self.state.pipe_gui.send(ParamFetch())
 
     def on_send_click(self, event):
-        print "send"
+        item = self.__get_selection()
+    	if item == None:
+    	    return
+        param = Param(self.etv.set(item, "name"), self.etv.set(item, "val"))
+        self.state.pipe_gui.send(ParamSendList([param]))
 
     def on_search_key(self, event):
         self.__update()
@@ -191,20 +195,15 @@ class ParamGUIFrame(tk.Frame):
 
     def on_timer(self):
         '''Main Loop.'''
-        state = self.state
-        if state.close_event.wait(0.001):
+        if self.state.close_event.wait(0.001):
             self.mainwindow.destroy()
             return
         # Get messages
-        while state.child_pipe_recv.poll():
-            obj = state.child_pipe_recv.recv()
+        while self.state.pipe_gui.poll():
+            obj = self.state.pipe_gui.recv()
             if isinstance(obj, ParamUpdateList):
-                print "list"
                 for param in obj.params:
                     self.__parse_param(param)
-            elif isinstance(obj, ParamUpdate):
-                print "single"
-                self.__parse_param(obj)
         self.mainwindow.after(100, self.on_timer)
 
     def __parse_param(self, param):

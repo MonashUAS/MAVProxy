@@ -14,12 +14,24 @@ class paramGUI(mp_module.MPModule):
         self.mpstate = mpstate
         self.gui = tkparamGUI.ParameterEditor(title='Parameter Editor')
 
-        param1 = ParamUpdate("TEST_PARAMETER_NAME1", "new value one")
-        param2 = ParamUpdate("TEST_PARAMETER_NAME2", "new value two")
-        param3 = ParamUpdate("TEST_PARAMETER_NAME3", "new value three")
+        param1 = Param("TEST_PARAMETER_NAME1", "new value one")
+        param2 = Param("TEST_PARAMETER_NAME2", "new value two")
+        param3 = Param("TEST_PARAMETER_NAME3", "new value three")
 
-        self.gui.parent_pipe_send.send(param1)
-        self.gui.parent_pipe_send.send(ParamUpdateList([param2, param3]))
+        self.gui.pipe_mavproxy.send(ParamUpdateList([param1, param2, param3]))
+
+    def idle_task(self):
+        if self.gui.close_event.wait(0.001):
+            self.mainwindow.destroy()
+            return
+        # Get messages
+        while self.gui.pipe_mavproxy.poll():
+            obj = self.gui.pipe_mavproxy.recv()
+            if isinstance(obj, ParamSendList):
+                for param in obj.params:
+                    print "Send '{0}' with value '{1}'.".format(param.name, param.value)
+            elif isinstance(obj, ParamFetch):
+                print "Fetch parameters"
 
     def unload(self):
         '''unload module'''

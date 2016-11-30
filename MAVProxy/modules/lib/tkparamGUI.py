@@ -13,15 +13,16 @@ class ParameterEditor():
     def __init__(self, title='MAVProxy: Parameter Editor'):
         self.title  = title
         # Create Pipe to send attitude information from module to UI
-        self.child_pipe_recv, self.parent_pipe_send = multiprocessing.Pipe(duplex=False)
+        self.pipe_gui, self.pipe_mavproxy = multiprocessing.Pipe(duplex=True)
+        #self.child_pipe_recv, self.parent_pipe_send = multiprocessing.Pipe(duplex=False)
         self.close_event = multiprocessing.Event()
         self.close_event.clear()
         self.child = multiprocessing.Process(target=self.child_task)
         self.child.start()
-        self.child_pipe_recv.close()
+        self.pipe_gui.close()
 
     def child_task(self):
-        self.parent_pipe_send.close()
+        self.pipe_mavproxy.close()
 
         import tkinter as tk
         from tkparamGUI_ui import ParamGUIFrame
