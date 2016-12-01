@@ -29,7 +29,6 @@ class LayoutConfigFrame(tk.Frame):
         self.lb2 = tk.Listbox(self,selectmode=tk.EXTENDED,height=self.rows,width=self.maxCharLen,font=self.lbFont)
         for i in range(0,len(self.winList)):
             self.lb1.insert(i,self.winList[i])
-            self.lb2.insert(i,self.winList[i])
         self.grid(row=self.rows,column=8)
         self.lb1.grid(row=1,rowspan=self.rows,column=0)
         # Save Windows List
@@ -63,12 +62,15 @@ class LayoutConfigFrame(tk.Frame):
         self.heightlb.grid(row=0,column=8)
         
         ''# Add Entry Boxes - turn this into a function
+        self.entryFont = tkFont.Font(size=8)
+        self.fileEntryBox = tk.Entry(self,bd=1,font=self.entryFont)
+        self.fileEntryBox.insert(0,'../file.cfg')
+        self.fileEntryBox.grid(row=1,column=1,columnspan=2)
         self.cmdBoxes = []
         self.xBoxes = []
         self.yBoxes = []
         self.widthBoxes = []
         self.heightBoxes = []
-        self.entryFont = tkFont.Font(size=8)
         for i in range(0,self.rows-1):
             self.cmdBoxes.append(tk.Entry(self,bd=1,font=self.entryFont))
             self.cmdBoxes[i].grid(row=i+1,column=4)
@@ -101,8 +103,8 @@ class LayoutConfigFrame(tk.Frame):
                     
         self.winList = winNames
         self.maxCharLen = int(max(charLen)*0.80)
-        if self.maxCharLen > 50:
-            self.maxCharLen = 50
+        if self.maxCharLen > 40:
+            self.maxCharLen = 40
         print 'Updated Window List.'
 
 
