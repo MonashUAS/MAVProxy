@@ -17,7 +17,7 @@ class LayoutConfigFrame(tk.Frame):
 
         # Create Frame
         tk.Frame.__init__(self, master=self.mainwindow)
-        self.grid(row=100,column=8)
+        self.grid(row=self.rows+1,column=8)
         self.grid_rowconfigure(0,weight=1)
         
         # Add Listboxes
@@ -36,7 +36,7 @@ class LayoutConfigFrame(tk.Frame):
         self.lb1.grid(row=1,rowspan=self.rows,column=0)
         self.lb2.grid(row=1,rowspan=self.rows,column=3)
         if len(self.winList) < self.rows:
-            for i in reversed(range(len(self.winList)+1,self.rows+1)):
+            for i in reversed(range(len(self.winList),self.rows+1)):
                 self.lb1.delete(i)
         
         # Add Buttons
@@ -86,6 +86,7 @@ class LayoutConfigFrame(tk.Frame):
             self.widthBoxes[i].grid(row=i+1,column=7)
             self.heightBoxes.append(tk.Entry(self,bd=1,width=5,font=self.entryFont))
             self.heightBoxes[i].grid(row=i+1,column=8)
+           
         
         self.on_timer() # start timer
 
@@ -142,6 +143,8 @@ class LayoutConfigFrame(tk.Frame):
         # Add entries to left listbox
         for entry in moveList:
             self.lb1.insert(tk.END,entry)
+        # Update Entry Boxes
+        self.updateEntryBoxes() 
     
     def moveRight(self):
         '''Moves the selected windows to the right listbox, to be
@@ -156,6 +159,43 @@ class LayoutConfigFrame(tk.Frame):
         # Add entries to right listbox
         for entry in moveList:
             self.lb2.insert(tk.END,entry)
+        # Update Entry Boxes
+        self.updateEntryBoxes() 
+        
+    def updateEntryBoxes(self):
+        '''Updates the entry boxes with the appropriate x,y,width,height.'''
+        # Update entry boxes
+        num = len(self.lb2.get(0,tk.END))
+        for i in range(0,self.rows-1):
+            self.xBoxes[i].delete(0,tk.END)
+            self.yBoxes[i].delete(0,tk.END)
+            self.widthBoxes[i].delete(0,tk.END)
+            self.heightBoxes[i].delete(0,tk.END)
+        for i in range(0,num):
+            x,y,width,height = self.getPositionSize(self.lb2.get(i))
+            self.xBoxes[i].insert(0,x)
+            self.yBoxes[i].insert(0,y)           
+            self.widthBoxes[i].insert(0,width)
+            self.heightBoxes[i].insert(0,height)
+
+    def getPositionSize(self,windowName):
+        '''Gets the size and position of a window given the window name.'''
+        p = sp.Popen(["wmctrl","-l","-G"],stdout=sp.PIPE)
+        out, err = p.communicate()
+        mylist = out.split('\n')
+        for line in mylist:
+            lineu = unicode(line,'utf-8')
+            if lineu.find(windowName) != -1:
+                line = line.split(' ')
+                line = [x for x in line if x is not '']
+                x = int(line[2])
+                y = int(line[3])
+                width = int(line[4])
+                height = int(line[5])
+                
+                print 'x: %i, y: %i, width: %i, height: %i' % (x,y,width,height)
+
+                return x,y,width,height
 
     def on_timer(self):
         '''Main Loop.'''
