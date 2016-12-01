@@ -12,6 +12,7 @@ import time
 from MAVProxy.modules.lib import mp_module
 from MAVProxy.modules.lib import mp_util
 from MAVProxy.modules.lib import mp_settings
+from MAVProxy.modules.lib import tklayoutconfig
 
 import subprocess as sp
 
@@ -19,6 +20,9 @@ class layoutConfig(mp_module.MPModule):
     def __init__(self, mpstate):
         """Initialise module"""
         super(layoutConfig, self).__init__(mpstate, "Layout Configuration", "")
+        self.mpstate.layoutcConfig = tklayoutconfig.LayoutConfig()
+        
+
 
         self.add_command('listwins', self.cmd_getWindowList, "Layout Configuration Module")
         self.add_command('getwingeo', self.cmd_getPositionSize, "Layout Configuration Module")
