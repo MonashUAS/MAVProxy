@@ -13,31 +13,35 @@ class LayoutConfigFrame(tk.Frame):
         self.mainwindow = mainwindow
         self.winList  = []
         self.maxCharLen  = 0
+        self.rows = 15
 
         # Create Frame
         tk.Frame.__init__(self, master=self.mainwindow)
-        self.rows = 1
         self.grid(row=100,column=8)
         self.grid_rowconfigure(0,weight=1)
         
         # Add Listboxes
         # List Windows List
         self.getWindowList()
-        self.rows = int(ceil(len(self.winList)/2.0)*2) # Round up to the nearest even number
         self.lbFont = tkFont.Font(size=11)
         self.lb1 = tk.Listbox(self,selectmode=tk.EXTENDED,height=self.rows,width=self.maxCharLen,font=self.lbFont)
         self.lb2 = tk.Listbox(self,selectmode=tk.EXTENDED,height=self.rows,width=self.maxCharLen,font=self.lbFont)
+        # Save Windows List
         for i in range(0,len(self.winList)):
             self.lb1.insert(i,self.winList[i])
+        if len(self.winList) < self.rows:
+            for i in range(len(self.winList)+1,self.rows+1):
+                self.lb1.insert(i,"")
         self.grid(row=self.rows,column=8)
         self.lb1.grid(row=1,rowspan=self.rows,column=0)
-        # Save Windows List
-
         self.lb2.grid(row=1,rowspan=self.rows,column=3)
+        if len(self.winList) < self.rows:
+            for i in reversed(range(len(self.winList)+1,self.rows+1)):
+                self.lb1.delete(i)
         
         # Add Buttons
         # Get/Save Data Buttons
-        self.but1 = tk.Button(self,text="Update Window List",command=self.getWindowList)
+        self.but1 = tk.Button(self,text="Update Window List",command=self.updateWindowList)
         self.but1.grid(row=0,column=0)
         self.but2 = tk.Button(self,text="Load Config File",command=self.loadConfigFile)
         self.but2.grid(row=0,column=1,columnspan=2)
@@ -81,7 +85,7 @@ class LayoutConfigFrame(tk.Frame):
             self.widthBoxes.append(tk.Entry(self,bd=1,width=5,font=self.entryFont))
             self.widthBoxes[i].grid(row=i+1,column=7)
             self.heightBoxes.append(tk.Entry(self,bd=1,width=5,font=self.entryFont))
-            self.heightBoxes[i].grid(row=i+1,column=8)       
+            self.heightBoxes[i].grid(row=i+1,column=8)
         
         self.on_timer() # start timer
 
@@ -96,10 +100,11 @@ class LayoutConfigFrame(tk.Frame):
             if len(line)>0:
                 line = line.split(' ')
                 thisLine = " ".join(line[4:])
-                winNames.append(thisLine)
-                charLen.append(len(thisLine))
-                if show:
-                    print thisLine
+                if thisLine not in ['XdndCollectionWindowImp','unity-launcher','unity-panel','unity-dash','Hud','Desktop']:
+                    winNames.append(thisLine)
+                    charLen.append(len(thisLine))
+                    if show:
+                        print thisLine
                     
         self.winList = winNames
         self.maxCharLen = int(max(charLen)*0.80)
@@ -107,6 +112,15 @@ class LayoutConfigFrame(tk.Frame):
             self.maxCharLen = 40
         print 'Updated Window List.'
 
+    def updateWindowList(self):
+        '''Updates the displayed window list.'''
+        # Get New Window List
+        self.getWindowList()
+        # Reset the listboxes
+        self.lb1.delete(0,tk.END)
+        for i in range(0,len(self.winList)):
+            self.lb1.insert(i,self.winList[i])
+        self.lb2.delete(0,tk.END)
 
     def loadConfigFile(self):
         '''Loads the configuration file.'''
@@ -118,12 +132,30 @@ class LayoutConfigFrame(tk.Frame):
 
     def moveLeft(self):
         '''Moves the selected windows to the left listbox.'''
-        pass
+        # Entries to move
+        moveList = []
+        for i in self.lb2.curselection():
+            moveList.append(self.lb2.get(i))
+        # Remove entries from right list boxes in backwards order
+        for i in reversed(self.lb2.curselection()):
+            self.lb2.delete(i)
+        # Add entries to left listbox
+        for entry in moveList:
+            self.lb1.insert(tk.END,entry)
     
     def moveRight(self):
         '''Moves the selected windows to the right listbox, to be
         saved in the configuration.'''
-        pass
+        # Entries to Move
+        moveList = []
+        for i in self.lb1.curselection():
+            moveList.append(self.lb1.get(i))
+        # Remove entries from left list boxes in backwards order
+        for i in reversed(self.lb1.curselection()):
+            self.lb1.delete(i)
+        # Add entries to right listbox
+        for entry in moveList:
+            self.lb2.insert(tk.END,entry)
 
     def on_timer(self):
         '''Main Loop.'''
