@@ -52,6 +52,9 @@ class LayoutConfigFrame(tk.Frame):
         self.but3.grid(row=self.rows/2,column=1,rowspan=2)
         self.but4 = tk.Button(self,text=">>",command=self.moveRight)
         self.but4.grid(row=self.rows/2,column=2,rowspan=2)
+        # Add set Windows Button
+        self.but5 = tk.Button(self,text="Set Windows",command=self.setWindows)
+        self.but5.grid(row=2,column=1,columnspan=2)
         
         # Add Labels
         self.cmdLabel = tk.Label(self,text='module load <cmd>')
@@ -161,7 +164,11 @@ class LayoutConfigFrame(tk.Frame):
             self.lb2.insert(tk.END,entry)
         # Update Entry Boxes
         self.updateEntryBoxes() 
-        
+    
+    def setWindows(self):
+        '''Sets the positions of the windows by the currently loaded configuration.'''
+        pass
+    
     def updateEntryBoxes(self):
         '''Updates the entry boxes with the appropriate x,y,width,height.'''
         # Update entry boxes
