@@ -10,7 +10,7 @@ class ParameterEditor():
     '''
     Graphical parameter editor for MAVProxy.
     '''
-    def __init__(self, vehicle_name, title="MAVProxy: Parameter Editor"):
+    def __init__(self, vehicle_name="ArduPlane", title="MAVProxy: Parameter Editor"):
         self.title  = title
         self.vehicle_name = vehicle_name
 
