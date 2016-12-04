@@ -20,21 +20,16 @@ class layoutConfig(mp_module.MPModule):
     def __init__(self, mpstate):
         """Initialise module"""
         super(layoutConfig, self).__init__(mpstate, "Layout Configuration", "")
-        self.mpstate.layoutcConfig = tklayoutconfig.LayoutConfig()
+        self.mpstate.layoutConfig = tklayoutconfig.LayoutConfig(mpstate=mpstate)
         
-
-
         self.add_command('listwins', self.cmd_getWindowList, "Layout Configuration Module")
         self.add_command('getwingeo', self.cmd_getPositionSize, "Layout Configuration Module")
 
-        
         # wmctrl -r "Horizon Indicator" -e 1,200,100,800,400 -b remove,maximized_horz,maximized_vert
         # wmctrl -l -G
-        
-        
-        
+
         # Check OS
-        if not (platform.platform()).contains('Linux'):
+        if 'Linux' not in platform.platform():
             print 'Layout Config module only works on x11 Linux based systems.'
             
     def usage(self):

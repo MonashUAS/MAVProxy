@@ -5,6 +5,7 @@ import subprocess as sp
 
 from math import ceil
 import tkFileDialog
+import time
 
 class LayoutConfigFrame(tk.Frame):
     """ The main frame of the layout configurator."""
@@ -213,8 +214,32 @@ class LayoutConfigFrame(tk.Frame):
     
     def setWindows(self):
         '''Sets the positions of the windows by the currently loaded configuration.'''
-        pass
-    
+        #self.state.child_pipe_send.send('horizon')
+        num = len(self.lb2.get(0,tk.END))
+        for i in range(0,num):
+            # Load Module
+            cmd = self.cmdBoxes[i].get()
+            if cmd != "":
+                self.state.child_pip_send.send(cmd)
+            # Wait for module to be loaded
+            for j in range(0,4):
+                if self.lb2.get(i) not in self.winList:
+                    self.getWindowList()
+                    time.sleep(0.5)
+                print 'waiting'
+            if self.lb2.get(i) in self.winList:
+                print 'repositioning.'
+                p = sp.Popen(["wmctrl",'-r', str(self.lb2.get(i)), "-e 1,200,100,800,400", "-b remove,maximized_horz,maximized_vert"],stdout=sp.PIPE,shell=True)
+                out, err = p.communicate()
+                p = sp.Popen(["wmctrl",'-r', str(self.lb2.get(i)), "-e 1,200,100,800,400"],stdout=sp.PIPE,shell=True)
+                out, err = p.communicate()
+            else:
+                print 'Window not open. Not Positioning: %s' % self.lb2.get(i)
+                    
+                
+                
+                        
+        
     def updateEntryBoxes(self):
         '''Updates the entry boxes with the appropriate x,y,width,height.'''
         # Update entry boxes
