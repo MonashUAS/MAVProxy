@@ -7,7 +7,7 @@ This module can save and load configurations of MAVProxy windows.
 '''
 
 from pymavlink import mavutil
-import time
+import time, platform
 
 from MAVProxy.modules.lib import mp_module
 from MAVProxy.modules.lib import mp_util
@@ -31,7 +31,12 @@ class layoutConfig(mp_module.MPModule):
         # wmctrl -r "Horizon Indicator" -e 1,200,100,800,400 -b remove,maximized_horz,maximized_vert
         # wmctrl -l -G
         
-
+        
+        
+        # Check OS
+        if not (platform.platform()).contains('Linux'):
+            print 'Layout Config module only works on x11 Linux based systems.'
+            
     def usage(self):
         '''show help on command line options'''
         return "Usage: example <status|set>"
