@@ -4,6 +4,7 @@ import tkFont
 import subprocess as sp
 
 from math import ceil
+import tkFileDialog
 
 class LayoutConfigFrame(tk.Frame):
     """ The main frame of the layout configurator."""
@@ -18,7 +19,8 @@ class LayoutConfigFrame(tk.Frame):
         # Create Frame
         tk.Frame.__init__(self, master=self.mainwindow)
         self.grid(row=self.rows+1,column=8)
-        self.grid_rowconfigure(0,weight=1)
+        for i in range(0,self.rows):
+            self.grid_rowconfigure(i,weight=0)
         
         # Add Listboxes
         # List Windows List
@@ -32,7 +34,6 @@ class LayoutConfigFrame(tk.Frame):
         if len(self.winList) < self.rows:
             for i in range(len(self.winList)+1,self.rows+1):
                 self.lb1.insert(i,"")
-        self.grid(row=self.rows,column=8)
         self.lb1.grid(row=1,rowspan=self.rows,column=0)
         self.lb2.grid(row=1,rowspan=self.rows,column=3)
         if len(self.winList) < self.rows:
@@ -54,7 +55,7 @@ class LayoutConfigFrame(tk.Frame):
         self.but4.grid(row=self.rows/2,column=2,rowspan=2)
         # Add set Windows Button
         self.but5 = tk.Button(self,text="Set Windows",command=self.setWindows)
-        self.but5.grid(row=2,column=1,columnspan=2)
+        self.but5.grid(row=2,column=1,columnspan=2,rowspan=2)
         
         # Add Labels
         self.cmdLabel = tk.Label(self,text='module load <cmd>')
@@ -71,24 +72,24 @@ class LayoutConfigFrame(tk.Frame):
         ''# Add Entry Boxes - turn this into a function
         self.entryFont = tkFont.Font(size=8)
         self.fileEntryBox = tk.Entry(self,bd=1,font=self.entryFont)
-        self.fileEntryBox.insert(0,'../file.cfg')
+        self.fileEntryBox.insert(0,'~/file.cfg')
         self.fileEntryBox.grid(row=1,column=1,columnspan=2)
         self.cmdBoxes = []
         self.xBoxes = []
         self.yBoxes = []
         self.widthBoxes = []
         self.heightBoxes = []
-        for i in range(0,self.rows-1):
+        for i in range(0,self.rows):
             self.cmdBoxes.append(tk.Entry(self,bd=1,font=self.entryFont))
-            self.cmdBoxes[i].grid(row=i+1,column=4)
+            self.cmdBoxes[i].grid(row=i+1,column=4,sticky='N')
             self.xBoxes.append(tk.Entry(self,bd=1,width=5,font=self.entryFont))
-            self.xBoxes[i].grid(row=i+1,column=5)
+            self.xBoxes[i].grid(row=i+1,column=5,sticky='N')
             self.yBoxes.append(tk.Entry(self,bd=1,width=5,font=self.entryFont))
-            self.yBoxes[i].grid(row=i+1,column=6)
+            self.yBoxes[i].grid(row=i+1,column=6,sticky='N')
             self.widthBoxes.append(tk.Entry(self,bd=1,width=5,font=self.entryFont))
-            self.widthBoxes[i].grid(row=i+1,column=7)
+            self.widthBoxes[i].grid(row=i+1,column=7,sticky='N')
             self.heightBoxes.append(tk.Entry(self,bd=1,width=5,font=self.entryFont))
-            self.heightBoxes[i].grid(row=i+1,column=8)
+            self.heightBoxes[i].grid(row=i+1,column=8,sticky='N')
            
         
         self.on_timer() # start timer
@@ -125,14 +126,59 @@ class LayoutConfigFrame(tk.Frame):
         for i in range(0,len(self.winList)):
             self.lb1.insert(i,self.winList[i])
         self.lb2.delete(0,tk.END)
+        # Clear Entry Boxes
+        self.updateEntryBoxes()
 
     def loadConfigFile(self):
         '''Loads the configuration file.'''
-        pass
+        # Update Window List
+        self.updateWindowList()
+        # Open File
+        oldFile = self.fileEntryBox.get().split('/')
+        mydir = '/'.join(oldFile[:-1])
+        myfile = oldFile[-1]
+        f = tkFileDialog.askopenfile(title='Save Configuration File',defaultextension='.cfg',initialdir=mydir,initialfile=myfile,filetypes=[('Config files','.cfg'),('Text files','.txt')])
+        # Read in data
+        line = f.readline()
+        i = -1
+        while line != '':
+            i = i + 1
+            lineData = line.split(':,:')
+            self.lb2.insert(tk.END,lineData[0])
+            self.cmdBoxes[i].insert(0,lineData[1])
+            self.xBoxes[i].insert(0,lineData[2])
+            self.yBoxes[i].insert(0,lineData[3])
+            self.widthBoxes[i].insert(0,lineData[4])
+            self.heightBoxes[i].insert(0,lineData[5][:-2])
+            # Get next line
+            line = f.readline()
+        # Close file
+        f.close()
 
     def saveConfigFile(self):
         '''Saves the configuration to file.'''
-        pass
+        # Create file to save
+        oldFile = self.fileEntryBox.get().split('/')
+        mydir = '/'.join(oldFile[:-1])
+        myfile = oldFile[-1]
+        f = tkFileDialog.asksaveasfile(mode='w',title='Save Configuration File',defaultextension='.cfg',initialdir=mydir,initialfile=myfile,filetypes=[('Config files','.cfg'),('Text files','.txt')])
+        if f is None:
+            print 'Invalid file.'
+            return
+        self.fileEntryBox.delete(0,tk.END)
+        self.fileEntryBox.insert(0,f.name)
+        # Write data to file
+        for i in range(0,self.lb2.size()):
+            winName = self.lb2.get(i)
+            winCmd = self.cmdBoxes[i].get()
+            x = self.xBoxes[i].get()
+            y = self.yBoxes[i].get()
+            width = self.widthBoxes[i].get()
+            height = self.heightBoxes[i].get()
+            f.write('%s:,:%s:,:%s:,:%s:,:%s:,:%s\n' % (winName,winCmd,x,y,width,height))           
+        # Close file
+        f.close()
+        print 'Saved window configuration to %s' % f.name 
 
     def moveLeft(self):
         '''Moves the selected windows to the left listbox.'''
@@ -184,8 +230,10 @@ class LayoutConfigFrame(tk.Frame):
             self.yBoxes[i].insert(0,y)           
             self.widthBoxes[i].insert(0,width)
             self.heightBoxes[i].insert(0,height)
+        for i in range(num,self.rows-1):
+            self.cmdBoxes[i].delete(0,tk.END)
 
-    def getPositionSize(self,windowName):
+    def getPositionSize(self,windowName,show=False):
         '''Gets the size and position of a window given the window name.'''
         p = sp.Popen(["wmctrl","-l","-G"],stdout=sp.PIPE)
         out, err = p.communicate()
@@ -200,7 +248,8 @@ class LayoutConfigFrame(tk.Frame):
                 width = int(line[4])
                 height = int(line[5])
                 
-                print 'x: %i, y: %i, width: %i, height: %i' % (x,y,width,height)
+                if show:
+                    print 'x: %i, y: %i, width: %i, height: %i' % (x,y,width,height)
 
                 return x,y,width,height
 
