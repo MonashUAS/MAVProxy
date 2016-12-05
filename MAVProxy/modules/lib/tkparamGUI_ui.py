@@ -14,6 +14,14 @@ class ParamGUIFrame(tk.Frame):
         self.sort_desc = False   # ascending
         self.last_height = -1
 
+        self.status = [
+            {"name": "new", "colour": "lightblue"},
+            {"name": "staged", "colour": "orange"},
+            {"name": "updated", "colour": "green"},
+            {"name": "failed", "colour": "red"}
+        ]
+        self.status_list = [status["name"] for status in self.status]
+
         # Build top level frame
         tk.Frame.__init__(self, master=self.mainwindow)
     	self.grid(row=0, column=0, sticky="nsew")
@@ -50,7 +58,7 @@ class ParamGUIFrame(tk.Frame):
         frameRPane = self.__build_frame(panedWindow1, column=1)
         panedWindow1.add(frameRPane)
 
-        self.frameFilter = ScrollableFrame(master=frameLPane, scrolltype="vertical")
+        self.frameFilter = tk.Frame(master=frameLPane)
         self.frameFilter.grid(rowspan=2, sticky="nsew", padx=10)
     	frameCtrl = self.__build_frame(frameLPane, column=1)
 
@@ -75,6 +83,7 @@ class ParamGUIFrame(tk.Frame):
     	self.etv.bind("<FocusOut>", self.on_cell_focus_out)
     	self.etv.bind("<Button-1>", self.on_cell_focus_out, add=True)
     	self.etv.bind("<<TreeviewSelect>>", self.on_cell_selected, add=True)
+        self.__set_status_colours()
 
     	# Treeview columns
     	self.etv.heading("name", text=u"Parameter \u2227", command=self.on_sort_click, anchor="w")
@@ -99,12 +108,32 @@ class ParamGUIFrame(tk.Frame):
     	btn.bind("<Button-1>", self.on_cell_focus_out)
     	btn.bind("<ButtonRelease-1>", callback)
 
+    def __set_status_colours(self):
+        for status in self.status:
+            self.etv.tag_configure("status_"+status["name"], background=status["colour"])
+
+    def __build_filter_list_button(self, master, text, value, ipadx=0, background="#d9d9d9"):
+        b = tk.Radiobutton(master=master, text=text, value=value, variable=self.filter, indicatoron=False, background=background)
+        b.pack(side="top", fill="x", ipadx=ipadx)
+        b.bind("<Button-1>", self.on_cell_focus_out, add=True)
+
     def __build_filter_list(self, filters):
         self.filter = tk.StringVar()
+
+        # Frames
+        scrollFrame = ScrollableFrame(master=self.frameFilter, scrolltype="vertical")
+        scrollFrame.pack(side="bottom", fill="both", expand=True)
+        paddingFrame = tk.Frame(master=self.frameFilter, width=13)
+        paddingFrame.pack(side="right", fill="y")
+
+        # Radio buttons
+        self.__build_filter_list_button(self.frameFilter, "None", "none")
+        for status in self.status:
+            self.__build_filter_list_button(self.frameFilter, status["name"].title(), status["name"], background=status["colour"])
         for fltr in filters:
-            b = tk.Radiobutton(master=self.frameFilter, text=fltr, value=fltr, variable=self.filter, indicatoron=False)
-            b.pack(fill="x", ipadx=10)
-        self.filter.set(filters[0])
+            self.__build_filter_list_button(scrollFrame, fltr, fltr, ipadx=10)
+
+        self.filter.set("none")
 
     def __build_data(self):
         xml_path = path = mp_util.dot_mavproxy("%s.xml" % self.state.vehicle_name)
@@ -123,26 +152,35 @@ class ParamGUIFrame(tk.Frame):
 
             for param in parameters.iter("param"):
                 name = param.attrib["name"].split(":")[-1].upper()
-                param_id = self.etv.insert("", "end", values=(name, param.attrib["humanName"]))
-                self.data[name] = {"docs": param, "fltr": fltr, "id": param_id}
+                value = param.attrib["humanName"]
+                param_id = self.etv.insert("", "end", values=(name, value))
+                self.data[name] = {
+                    "value": value,   # stores the last value received from the module
+                    "docs": param,
+                    "fltr": fltr,
+                    "id": param_id,
+                    "status": ""
+                }
 
         filters.sort()
-        self.__build_filter_list(["None", self.state.vehicle_name] + filters)
+        self.__build_filter_list([self.state.vehicle_name] + filters)
 
     def __update(self):
         params = [(param_name, self.data[param_name]["id"]) for param_name in self.data]
         params.sort(reverse=self.sort_desc)
 
         for indx, item in enumerate(params):   # item: (item value, item_id)
-	    if self.__filter(item[0]) and self.__search(item[0]):
-        	self.etv.move(item[1], '', indx)
-	    else:
-    		self.etv.selection_remove(item[1])
-    		self.etv.detach(item[1])
+    	    if self.__filter(item[0]) and self.__search(item[0]):
+            	self.etv.move(item[1], '', indx)
+    	    else:
+        		self.etv.selection_remove(item[1])
+        		self.etv.detach(item[1])
 
     def __filter(self, item):
         fltr = self.filter.get()
-        if fltr == "None":
+        if fltr == "none":
+            return True
+        if fltr in self.status_list and fltr == self.data[item]["status"]:
             return True
         return fltr == self.data[item]["fltr"]
 
@@ -184,18 +222,20 @@ class ParamGUIFrame(tk.Frame):
         if item == None:
             self.__set_docs_text("")
             return
-        param = self.etv.set(item, "name")
+        param_name = self.etv.set(item, "name")
 
-        docs = self.data[param]["docs"]
-        doc_string = param + ":\n" + docs.attrib['humanName'] + "\n\n" + docs.attrib['documentation'] + "\n\n"
+        docs = self.data[param_name]["docs"]
+        doc_string = param_name + ":\n" + docs.attrib["humanName"] + "\n\n" + docs.attrib["documentation"] + "\n\n"
+        if self.data[param_name]["status"] != "":
+            doc_string += "Status: " + self.data[param_name]["status"] + "\n\n"
         for child in docs:
             if child.tag == "field":
-                doc_string += child.attrib['name'] + ": " + child.text + "\n"
+                doc_string += child.attrib["name"] + ": " + child.text + "\n"
             elif child.tag == "values":
                 doc_string += "Values:\n"
             for vchild in child:
                 if vchild.tag == "value":
-                    doc_string += "    " + vchild.attrib['code'] + ": " + vchild.text + "\n"
+                    doc_string += "    " + vchild.attrib["code"] + ": " + vchild.text + "\n"
         self.__set_docs_text(doc_string)
 
     def on_cell_double_click(self, event):
@@ -212,10 +252,17 @@ class ParamGUIFrame(tk.Frame):
         item = self.__get_selection()
     	if item == None:
     	    return
-        print 'Item {0} was changed to {1}'.format(item, self.etv.set(item, "value"))
+        param_name = self.etv.set(item, "name")
+
+        if self.etv.set(item, "value") != self.data[param_name]["value"]:
+            self.__set_status_tag(param_name, "staged")
+        else:
+            self.__clear_status_tag(param_name)
+        self.__update()
 
     def on_fetch_click(self, event):
         self.state.pipe_gui.send(ParamFetch())
+        self.__clear_status_tags()
 
     def on_send_click(self, event):
         item = self.__get_selection()
@@ -223,9 +270,6 @@ class ParamGUIFrame(tk.Frame):
     	    return
         param = Param(self.etv.set(item, "name"), self.etv.set(item, "value"))
         self.state.pipe_gui.send(ParamSendList([param]))
-
-    def on_search_key(self, event):
-        self.__update()
 
     def on_cell_window_resize(self, event):
     	if event.height != self.last_height:
@@ -249,6 +293,25 @@ class ParamGUIFrame(tk.Frame):
 
     def __update_param(self, param):
         if param.name in self.data:
-            self.etv.set(self.data[param.name]["id"], "value", param.value)
+            if param.value != self.data[param.name]["value"]:
+                if self.data[param.name]["value"] != "":
+                    self.__set_status_tag(param.name, "new")
+                self.data[param.name]["value"] = param.value
+                self.etv.set(self.data[param.name]["id"], "value", param.value)
         else:
             print "Parameter '" + param.name + "' doesn't exist."
+
+    # Must call self.__update() after using
+    def __set_status_tag(self, param_name, status):
+        self.etv.item(self.data[param_name]["id"], tags=("status_"+status,))
+        self.data[param_name]["status"] = status
+
+    # Must call self.__update() after using
+    def __clear_status_tag(self, param_name):
+        self.etv.item(self.data[param_name]["id"], tags=())
+        self.data[param_name]["status"] = ""
+
+    def __clear_status_tags(self):
+        for param_name in self.data:
+            self.__clear_status_tag(param_name)
+        self.__update()
