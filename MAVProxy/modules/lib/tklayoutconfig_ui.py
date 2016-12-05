@@ -106,7 +106,7 @@ class LayoutConfigFrame(tk.Frame):
             if len(line)>0:
                 line = line.split(' ')
                 thisLine = " ".join(line[4:])
-                if thisLine not in []:
+                if thisLine not in ['XdndCollectionWindowImp','unity-launcher','unity-panel','unity-dash']:
                     winNames.append(thisLine)
                     charLen.append(len(thisLine))
                     if show:
@@ -242,10 +242,6 @@ class LayoutConfigFrame(tk.Frame):
                 out, err = p.communicate()
             else:
                 print 'Window not open. Not Positioning: %s' % self.lb2.get(i)
-                    
-                
-                
-                        
         
     def updateEntryBoxes(self):
         '''Updates the entry boxes with the appropriate x,y,width,height.'''
@@ -291,14 +287,5 @@ class LayoutConfigFrame(tk.Frame):
         if state.close_event.wait(0.001):
             self.mainwindow.destroy()
             return
-        # Get messages
-        '''while state.child_pipe_recv.poll():
-            obj = state.child_pipe_recv.recv()
-            if isinstance(obj, ParamUpdateList):
-                print "list"
-                for param in obj.params:
-                    self.__parse_param(param)
-            elif isinstance(obj, ParamUpdate):
-                print "single"
-                self.__parse_param(obj)'''
+
         self.mainwindow.after(100, self.on_timer)
