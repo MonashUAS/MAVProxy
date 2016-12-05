@@ -15,10 +15,10 @@ class ParamGUIFrame(tk.Frame):
         self.last_height = -1
 
         self.status = [
-            {"name": "new", "colour": "lightblue"},
+            {"name": "new", "colour": "dodger blue"},
             {"name": "staged", "colour": "orange"},
             {"name": "updated", "colour": "green"},
-            {"name": "failed", "colour": "red"}
+            {"name": "failed", "colour": "orange red"}
         ]
         self.status_list = [status["name"] for status in self.status]
 
@@ -141,32 +141,28 @@ class ParamGUIFrame(tk.Frame):
             print("Please run 'param download' first (vehicle_name=%s)" % self.state.vehicle_name)
             return
 
-        self.data = {}
-        filters= []
+        self.params = {}
+        self.filters = {}
+        self.docs = {}
         e = xml.etree.ElementTree.parse(xml_path).getroot()
 
         for parameters in e.iter("parameters"):
             fltr = parameters.attrib['name'].replace("_", "")
-            if fltr != self.state.vehicle_name:
-                filters.append(fltr)
+            self.filters[fltr] = []
 
             for param in parameters.iter("param"):
                 name = param.attrib["name"].split(":")[-1].upper()
-                value = param.attrib["humanName"]
-                param_id = self.etv.insert("", "end", values=(name, value))
-                self.data[name] = {
-                    "value": value,   # stores the last value received from the module
-                    "docs": param,
-                    "fltr": fltr,
-                    "id": param_id,
-                    "status": ""
-                }
+                self.filters[fltr].append(name)
+                self.docs[name] = param
 
+        filters = [fltr for fltr in self.filters]
+        filters.remove(self.state.vehicle_name)
         filters.sort()
+
         self.__build_filter_list([self.state.vehicle_name] + filters)
 
     def __update(self):
-        params = [(param_name, self.data[param_name]["id"]) for param_name in self.data]
+        params = [(param_name, self.params[param_name]["id"]) for param_name in self.params]
         params.sort(reverse=self.sort_desc)
 
         for indx, item in enumerate(params):   # item: (item value, item_id)
@@ -176,13 +172,13 @@ class ParamGUIFrame(tk.Frame):
         		self.etv.selection_remove(item[1])
         		self.etv.detach(item[1])
 
-    def __filter(self, item):
+    def __filter(self, param_name):
         fltr = self.filter.get()
         if fltr == "none":
             return True
-        if fltr in self.status_list and fltr == self.data[item]["status"]:
-            return True
-        return fltr == self.data[item]["fltr"]
+        if fltr in self.status_list:
+            return fltr == self.params[param_name]["status"]
+        return param_name in self.filters[fltr]
 
     def __search(self, item):
     	search_terms = self.search.get().upper().split(' ')
@@ -223,11 +219,16 @@ class ParamGUIFrame(tk.Frame):
             self.__set_docs_text("")
             return
         param_name = self.etv.set(item, "name")
+        doc_string = param_name + ":\n"
 
-        docs = self.data[param_name]["docs"]
-        doc_string = param_name + ":\n" + docs.attrib["humanName"] + "\n\n" + docs.attrib["documentation"] + "\n\n"
-        if self.data[param_name]["status"] != "":
-            doc_string += "Status: " + self.data[param_name]["status"] + "\n\n"
+        if not param_name in self.docs:
+            self.__set_docs_text(doc_string + "\nNo documentation available.")
+            return
+
+        docs = self.docs[param_name]
+        doc_string += docs.attrib["humanName"] + "\n\n" + docs.attrib["documentation"] + "\n\n"
+        if self.params[param_name]["status"] != "":
+            doc_string += "Status: " + self.params[param_name]["status"] + "\n\n"
         for child in docs:
             if child.tag == "field":
                 doc_string += child.attrib["name"] + ": " + child.text + "\n"
@@ -253,8 +254,13 @@ class ParamGUIFrame(tk.Frame):
     	if item == None:
     	    return
         param_name = self.etv.set(item, "name")
+        new_val = self.etv.set(item, "value")
 
-        if self.etv.set(item, "value") != self.data[param_name]["value"]:
+        if new_val == "":
+            # Parameter won't change instantly. So change after a small delay.
+            self.mainwindow.after(1, lambda: self.etv.set(item, "value", self.params[param_name]["value"]))
+            self.__clear_status_tag(param_name)
+        elif new_val != self.params[param_name]["value"]:
             self.__set_status_tag(param_name, "staged")
         else:
             self.__clear_status_tag(param_name)
@@ -265,11 +271,11 @@ class ParamGUIFrame(tk.Frame):
         self.__clear_status_tags()
 
     def on_send_click(self, event):
-        item = self.__get_selection()
-    	if item == None:
-    	    return
-        param = Param(self.etv.set(item, "name"), self.etv.set(item, "value"))
-        self.state.pipe_gui.send(ParamSendList([param]))
+        sendList = []
+        for param_name in self.params:
+            if self.params[param_name]["status"] == "staged":
+                sendList.append(Param(param_name, self.etv.set(self.params[param_name]["id"], "value")))
+        self.state.pipe_gui.send(ParamSendList(sendList))
 
     def on_cell_window_resize(self, event):
     	if event.height != self.last_height:
@@ -289,29 +295,37 @@ class ParamGUIFrame(tk.Frame):
             if isinstance(obj, ParamUpdateList):
                 for param in obj.params:
                     self.__update_param(param)
+                self.__update()
         self.mainwindow.after(100, self.on_timer)
 
     def __update_param(self, param):
-        if param.name in self.data:
-            if param.value != self.data[param.name]["value"]:
-                if self.data[param.name]["value"] != "":
-                    self.__set_status_tag(param.name, "new")
-                self.data[param.name]["value"] = param.value
-                self.etv.set(self.data[param.name]["id"], "value", param.value)
+        if param.name in self.params:
+            if param.value != self.params[param.name]["value"]:
+                self.__set_status_tag(param.name, "new")
+                self.params[param.name]["value"] = str(param.value)
+                self.etv.set(self.params[param.name]["id"], "value", param.value)
         else:
-            print "Parameter '" + param.name + "' doesn't exist."
+            self.__new_param(param.name, param.value)
+
+    def __new_param(self, name, value):
+        param_id = self.etv.insert("", "end", values=(name, value))
+        self.params[name] = {
+            "value": str(value),   # stores the last value received from the module
+            "id": param_id,
+            "status": ""
+        }
 
     # Must call self.__update() after using
     def __set_status_tag(self, param_name, status):
-        self.etv.item(self.data[param_name]["id"], tags=("status_"+status,))
-        self.data[param_name]["status"] = status
+        self.etv.item(self.params[param_name]["id"], tags=("status_"+status,))
+        self.params[param_name]["status"] = status
 
     # Must call self.__update() after using
     def __clear_status_tag(self, param_name):
-        self.etv.item(self.data[param_name]["id"], tags=())
-        self.data[param_name]["status"] = ""
+        self.etv.item(self.params[param_name]["id"], tags=())
+        self.params[param_name]["status"] = ""
 
     def __clear_status_tags(self):
-        for param_name in self.data:
+        for param_name in self.params:
             self.__clear_status_tag(param_name)
         self.__update()

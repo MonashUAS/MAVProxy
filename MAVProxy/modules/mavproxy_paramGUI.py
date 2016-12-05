@@ -3,6 +3,7 @@
 Graphical Parameter Editor
 '''
 
+import os.path
 from MAVProxy.modules.lib import mp_module
 from MAVProxy.modules.lib import tkparamGUI
 from MAVProxy.modules.lib.tkparamGUI_util import *
@@ -13,12 +14,10 @@ class paramGUI(mp_module.MPModule):
         super(paramGUI, self).__init__(mpstate, "paramGUI", "Graphical Parameter Editor")
         self.mpstate = mpstate
         self.gui = tkparamGUI.ParameterEditor(vehicle_name=self.vehicle_name, title='Parameter Editor')
+        self.param_file = os.path.join(self.logdir, "mav.parm")
 
-        param1 = Param("ACRO_PITCH_RATE", "new value one")
-        param2 = Param("ADSB_EMIT_TYPE", "new value two")
-        param3 = Param("ADSB_ICAO_ID", "new value three")
-
-        self.gui.pipe_module.send(ParamUpdateList([param1, param2, param3]))
+        param_list = [Param(param_name, self.mav_param[param_name]) for param_name in self.mav_param]
+        self.gui.pipe_module.send(ParamUpdateList(param_list))
 
     def idle_task(self):
         # Check if GUI has been closed
