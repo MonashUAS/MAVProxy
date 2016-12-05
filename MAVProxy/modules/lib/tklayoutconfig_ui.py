@@ -75,8 +75,8 @@ class LayoutConfigFrame(tk.Frame):
         self.fileEntryBox = tk.Entry(self,bd=1,font=self.entryFont)
         self.fileEntryBox.insert(0,'~/file.cfg')
         self.fileEntryBox.grid(row=1,column=1,columnspan=2)
-        self.cmdBoxes = []
         self.xBoxes = []
+        self.cmdBoxes = []
         self.yBoxes = []
         self.widthBoxes = []
         self.heightBoxes = []
@@ -106,7 +106,7 @@ class LayoutConfigFrame(tk.Frame):
             if len(line)>0:
                 line = line.split(' ')
                 thisLine = " ".join(line[4:])
-                if thisLine not in ['XdndCollectionWindowImp','unity-launcher','unity-panel','unity-dash','Hud','Desktop']:
+                if thisLine not in []:
                     winNames.append(thisLine)
                     charLen.append(len(thisLine))
                     if show:
@@ -150,7 +150,7 @@ class LayoutConfigFrame(tk.Frame):
             self.xBoxes[i].insert(0,lineData[2])
             self.yBoxes[i].insert(0,lineData[3])
             self.widthBoxes[i].insert(0,lineData[4])
-            self.heightBoxes[i].insert(0,lineData[5][:-2])
+            self.heightBoxes[i].insert(0,lineData[5][:-1])
             # Get next line
             line = f.readline()
         # Close file
@@ -220,18 +220,25 @@ class LayoutConfigFrame(tk.Frame):
             # Load Module
             cmd = self.cmdBoxes[i].get()
             if cmd != "":
-                self.state.child_pip_send.send(cmd)
+                self.state.child_pipe_send.send(cmd)
             # Wait for module to be loaded
             for j in range(0,4):
                 if self.lb2.get(i) not in self.winList:
                     self.getWindowList()
                     time.sleep(0.5)
                 print 'waiting'
+            # Position Window
             if self.lb2.get(i) in self.winList:
                 print 'repositioning.'
-                p = sp.Popen(["wmctrl",'-r', str(self.lb2.get(i)), "-e 1,200,100,800,400", "-b remove,maximized_horz,maximized_vert"],stdout=sp.PIPE,shell=True)
+                x = self.xBoxes[i].get()
+                y = self.yBoxes[i].get()
+                width = self.widthBoxes[i].get()
+                height = self.heightBoxes[i].get()
+                myStr = "wmctrl -r  %s -e 0,%s,%s,%s,%s -b remove,maximized_horz,maximized_vert" % (str(self.lb2.get(i)),x,y,width,height)
+                p = sp.Popen([myStr],stdout=sp.PIPE,shell=True)
                 out, err = p.communicate()
-                p = sp.Popen(["wmctrl",'-r', str(self.lb2.get(i)), "-e 1,200,100,800,400"],stdout=sp.PIPE,shell=True)
+                myStr = "wmctrl -r  %s -e 0,%s,%s,%s,%s" % (str(self.lb2.get(i)),x,y,width,height)
+                p = sp.Popen([myStr],stdout=sp.PIPE,shell=True)
                 out, err = p.communicate()
             else:
                 print 'Window not open. Not Positioning: %s' % self.lb2.get(i)
