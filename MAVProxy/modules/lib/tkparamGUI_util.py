@@ -1,4 +1,7 @@
-import tkinter as tk
+try:
+    import tkinter as tk
+except:
+    import Tkinter as tk
 
 ##### Message Types #####
 
@@ -12,12 +15,22 @@ class ParamSendList():
     def __init__(self, params):
         self.params = params
 
+class ParamSendReturn():
+    '''Parameter containing the return value after being sent to the aircraft. Sent from module to GUI.'''
+    def __init__(self, param):
+        self.param = param
+
+class ParamSendFail():
+    '''Parameter was unsuccessfully sent to the aircraft. Sent from module to GUI.'''
+    def __init__(self, param_name):
+        self.param_name = param_name
+
 class ParamFetch():
     '''Message to initiate a parameter fetch. Sent from GUI to module.'''
     pass
 
 class Param():
-    '''A Parameter. Not to be sent down pipe by itself (use an above class).'''
+    '''A Parameter. Not to be sent down pipe by itself (use an above class). Value must be a float.'''
     def __init__(self, name, value):
         self.name = name
         self.value = value
@@ -27,7 +40,7 @@ class Param():
 
 class ScrollableFrame(tk.Frame):
     '''A tk frame whose child elements can be scrolled.'''
-    
+
     def __init__(self, master, scrolltype="both", scrollrate=1, *args, **kw):
     	self.__scroll_rate = scrollrate
     	self.__scroll_tag = "ScrollableFrame_scroll"

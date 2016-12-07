@@ -2,8 +2,12 @@ from pygubu.widgets import tkscrollbarhelper, editabletreeview
 from MAVProxy.modules.lib import mp_util
 from tkparamGUI_util import *
 import os.path
-import tkinter as tk
 import xml.etree.ElementTree
+
+try:
+    import tkinter as tk
+except:
+    import Tkinter as tk
 
 class ParamGUIFrame(tk.Frame):
     """ The main frame of the graphical parameter editor."""
@@ -165,7 +169,7 @@ class ParamGUIFrame(tk.Frame):
         params = [(param_name, self.params[param_name]["id"]) for param_name in self.params]
         params.sort(reverse=self.sort_desc)
 
-        for indx, item in enumerate(params):   # item: (item value, item_id)
+        for indx, item in enumerate(params):   # item: (param name, param item id)
     	    if self.__filter(item[0]) and self.__search(item[0]):
             	self.etv.move(item[1], '', indx)
     	    else:
@@ -228,7 +232,7 @@ class ParamGUIFrame(tk.Frame):
         docs = self.docs[param_name]
         doc_string += docs.attrib["humanName"] + "\n\n" + docs.attrib["documentation"] + "\n\n"
         if self.params[param_name]["status"] != "":
-            doc_string += "Status: " + self.params[param_name]["status"] + "\n\n"
+            doc_string += "Status: " + self.params[param_name]["status"].title() + "\n\n"
         for child in docs:
             if child.tag == "field":
                 doc_string += child.attrib["name"] + ": " + child.text + "\n"
@@ -256,11 +260,28 @@ class ParamGUIFrame(tk.Frame):
         param_name = self.etv.set(item, "name")
         new_val = self.etv.set(item, "value")
 
+        # Parameter won't change instantly. So change after a small (1ms) delay.
+        set_cell_val = lambda val: self.mainwindow.after(1, lambda: self.etv.set(item, "value", str(val)))
+
         if new_val == "":
-            # Parameter won't change instantly. So change after a small delay.
-            self.mainwindow.after(1, lambda: self.etv.set(item, "value", self.params[param_name]["value"]))
+            set_cell_val(self.params[param_name]["value"])
             self.__clear_status_tag(param_name)
-        elif new_val != self.params[param_name]["value"]:
+            self.__update()
+            return
+
+        new_val_float = None
+        try:
+            new_val_float = float(new_val)
+        except ValueError:
+            # User must have entered something that isn't a number
+            set_cell_val(self.params[param_name]["value"])
+            return
+
+        if str(new_val_float) != new_val:
+            # User has entered a valid number, it just isn't formatted correctly
+            set_cell_val(new_val_float)
+
+        if new_val_float != self.params[param_name]["value"]:
             self.__set_status_tag(param_name, "staged")
         else:
             self.__clear_status_tag(param_name)
@@ -268,14 +289,15 @@ class ParamGUIFrame(tk.Frame):
 
     def on_fetch_click(self, event):
         self.state.pipe_gui.send(ParamFetch())
-        self.__clear_status_tags()
+        self.__clear_status_tags(ignore=["staged", "failed"])
 
     def on_send_click(self, event):
         sendList = []
         for param_name in self.params:
             if self.params[param_name]["status"] == "staged":
-                sendList.append(Param(param_name, self.etv.set(self.params[param_name]["id"], "value")))
+                sendList.append(Param(param_name, float(self.etv.set(self.params[param_name]["id"], "value"))))
         self.state.pipe_gui.send(ParamSendList(sendList))
+        self.__clear_status_tags(ignore=["staged", "failed"])
 
     def on_cell_window_resize(self, event):
     	if event.height != self.last_height:
@@ -294,23 +316,31 @@ class ParamGUIFrame(tk.Frame):
             obj = self.state.pipe_gui.recv()
             if isinstance(obj, ParamUpdateList):
                 for param in obj.params:
-                    self.__update_param(param)
-                self.__update()
+                    if param.name in self.params:
+                        if param.value != self.params[param.name]["value"]:
+                            self.__set_status_tag(param.name, "new")
+                            self.__update_param(param)
+                    else:
+                        self.__new_param(param.name, param.value)
+            elif isinstance(obj, ParamSendReturn):
+                if obj.param.value == self.params[obj.param.name]["value"]:
+                    self.__set_status_tag(obj.param.name, "failed")
+                else:
+                    self.__set_status_tag(obj.param.name, "updated")
+                    self.__update_param(obj.param)
+            elif isinstance(obj, ParamSendFail):
+                self.__set_status_tag(obj.param_name, "failed")
+            self.__update()
         self.mainwindow.after(100, self.on_timer)
 
     def __update_param(self, param):
-        if param.name in self.params:
-            if param.value != self.params[param.name]["value"]:
-                self.__set_status_tag(param.name, "new")
-                self.params[param.name]["value"] = str(param.value)
-                self.etv.set(self.params[param.name]["id"], "value", param.value)
-        else:
-            self.__new_param(param.name, param.value)
+        self.params[param.name]["value"] = param.value
+        self.etv.set(self.params[param.name]["id"], "value", str(param.value))
 
     def __new_param(self, name, value):
-        param_id = self.etv.insert("", "end", values=(name, value))
+        param_id = self.etv.insert("", "end", values=(name, str(value)))
         self.params[name] = {
-            "value": str(value),   # stores the last value received from the module
+            "value": value,   # stores the last value received from the module
             "id": param_id,
             "status": ""
         }
@@ -321,11 +351,14 @@ class ParamGUIFrame(tk.Frame):
         self.params[param_name]["status"] = status
 
     # Must call self.__update() after using
-    def __clear_status_tag(self, param_name):
+    def __clear_status_tag(self, param_name, ignore=[]):
+        for itag in ignore:
+            if self.etv.tag_has(itag, item=self.params[param_name]["id"]):
+                return
         self.etv.item(self.params[param_name]["id"], tags=())
         self.params[param_name]["status"] = ""
 
-    def __clear_status_tags(self):
+    def __clear_status_tags(self, ignore=[]):
         for param_name in self.params:
-            self.__clear_status_tag(param_name)
+            self.__clear_status_tag(param_name, ignore=ignore)
         self.__update()

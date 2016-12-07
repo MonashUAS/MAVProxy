@@ -33,7 +33,10 @@ class ParameterEditor():
         self.pipe_module.close()
 
         # Create app window
-        import tkinter as tk
+        try:
+            import tkinter as tk
+        except:
+            import Tkinter as tk
         from tkparamGUI_ui import ParamGUIFrame
         app = tk.Tk()
     	app.title(self.title)
