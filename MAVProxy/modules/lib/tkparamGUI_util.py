@@ -49,7 +49,7 @@ class ScrollableFrame(tk.Frame):
     	self.__frameOuter = tk.Frame(master=master, *args, **kw)
 
     	# Canvas
-    	self.__canvas = tk.Canvas(master=self.__frameOuter, bd=0, highlightthickness=0)
+    	self.__canvas = tk.Canvas(master=self.__frameOuter, bd=0, highlightthickness=0, height=0, width=0)
 
     	# Scrollbars
     	if scrolltype == "vertical" or scrolltype == "both":
@@ -72,19 +72,14 @@ class ScrollableFrame(tk.Frame):
     	self.bind("<Configure>", self.__configure_interior)
     	self.__canvas.create_window(0, 0, window=self, anchor="nw")
 
-    	# Passthrough basic geometry manager methods
-    	self.pack = self.__frameOuter.pack
-    	self.pack_configure = self.__frameOuter.pack_configure
-    	self.pack_forget = self.__frameOuter.pack_forget
-
-    	self.grid = self.__frameOuter.grid
-    	self.grid_configure = self.__frameOuter.grid_configure
-    	self.grid_forget = self.__frameOuter.grid_forget
-    	self.grid_remove = self.__frameOuter.grid_remove
-
-    	self.place = self.__frameOuter.place
-    	self.place_configure = self.__frameOuter.place_configure
-    	self.place_forget = self.__frameOuter.place_forget
+    	# Passthrough all geometry manager methods related to the outer frame
+        geoMethods = [
+            "grid", "grid_configure", "grid_forget", "grid_info", "grid_remove",
+            "pack", "pack_configure", "pack_forget", "pack_info",
+            "place", "place_configure", "place_forget", "place_info"
+        ]
+        for geoMethod in geoMethods:
+            setattr(self, geoMethod, getattr(self.__frameOuter, geoMethod))
 
     # Track changes to the canvas and frame width and sync them as well as updating the scrollbar
     def __configure_interior(self, event):
@@ -94,7 +89,7 @@ class ScrollableFrame(tk.Frame):
             # update the canvas's width to fit the inner frame
             self.__canvas.config(width=self.winfo_reqwidth())
 
-        # Event maybe as a result of adding a new child widget.
+        # Event may be as a result of adding a new child widget.
         # Therefore bind any new child elements to the scrollwheel.
         self.__bind_scrollwheel()
 

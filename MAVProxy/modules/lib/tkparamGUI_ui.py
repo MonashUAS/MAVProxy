@@ -44,7 +44,6 @@ class ParamGUIFrame(tk.Frame):
         self.on_timer()   # start timer
 
     def __build_gui(self):
-    	self.mainwindow.config(height=200, width=200)
     	self.mainwindow.minsize(600, 186)   # 5 rows
 
     	# Frames
@@ -58,9 +57,11 @@ class ParamGUIFrame(tk.Frame):
     	frameLPane.grid_columnconfigure(1, weight=1)
         frameLPane.bind("<Configure>", self.on_cell_window_resize)
         panedWindow1.add(frameLPane)
+        panedWindow1.paneconfigure(frameLPane, minsize=400)
 
         frameRPane = self.__build_frame(panedWindow1, column=1)
         panedWindow1.add(frameRPane)
+        panedWindow1.paneconfigure(frameRPane, minsize=200)
 
         self.frameFilter = tk.Frame(master=frameLPane)
         self.frameFilter.grid(rowspan=2, sticky="nsew", padx=10)
@@ -93,7 +94,7 @@ class ParamGUIFrame(tk.Frame):
     	self.etv.heading("name", text=u"Parameter \u2227", command=self.on_sort_click, anchor="w")
     	self.etv.column("name", stretch=True, minwidth=20, width=160, anchor="w")
     	self.etv.heading("value", text="Value", anchor="w")
-    	self.etv.column("value", stretch=True, minwidth=20, width=240, anchor="w")
+    	self.etv.column("value", stretch=True, minwidth=20, width=160, anchor="w")
 
     	# Documentation text area
     	self.textDocs = tk.Text(master=frameRPane, background="#d9d9d9", borderwidth=0, width=40, state="disabled")
