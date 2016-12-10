@@ -9,6 +9,11 @@ try:
 except:
     import Tkinter as tk
 
+try:
+    import tkMessageBox
+except:
+    import TkMessageBox as tkMessageBox
+
 class ParamGUIFrame(tk.Frame):
     """ The main frame of the graphical parameter editor."""
 
@@ -141,16 +146,17 @@ class ParamGUIFrame(tk.Frame):
         self.filter.set("none")
 
     def __build_data(self):
-        xml_path = path = mp_util.dot_mavproxy("%s.xml" % self.state.vehicle_name)
-        if not os.path.exists(xml_path):
-            print("Please run 'param download' first (vehicle_name=%s)" % self.state.vehicle_name)
-            return
-
         self.params = {}
         self.filters = {}
         self.docs = {}
-        e = xml.etree.ElementTree.parse(xml_path).getroot()
 
+        xml_path = path = mp_util.dot_mavproxy("%s.xml" % self.state.vehicle_name)
+        if not os.path.exists(xml_path):
+            self.__build_filter_list([])
+            tkMessageBox.showinfo("", "Please run 'param download' first (vehicle_name=%s)" % self.state.vehicle_name)
+            return
+
+        e = xml.etree.ElementTree.parse(xml_path).getroot()
         for parameters in e.iter("parameters"):
             fltr = parameters.attrib['name'].replace("_", "")
             self.filters[fltr] = []
