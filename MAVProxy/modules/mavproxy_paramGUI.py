@@ -17,24 +17,28 @@ class paramGUI(mp_module.MPModule):
         self.gui = tkparamGUI.ParameterEditor(vehicle_name=self.vehicle_name, title='Parameter Editor')
         self.param_file = os.path.join(self.logdir, "mav.parm")
         self.timeout = 3   # seconds
-        self.last_param_send = 0
+
+        self.last_send = -1
+        self.send_list = []
 
         self.ack_list = {}
         self.fetch_list = [param_name for param_name in self.mav_param]
-        self.update_list = [Param(param_name, self.mav_param[param_name]) for param_name in self.mav_param]
+        self.send_msg([ParamUpdate(Param(param_name, self.mav_param[param_name])) for param_name in self.mav_param])
 
     def mavlink_packet(self, m):
         '''handle an incoming mavlink packet'''
         if m.get_type() == 'PARAM_VALUE':
             param_name = "%.16s" % m.param_id
 
-            if param_name in self.ack_list:
-                self.gui.pipe_module.send(ParamSendReturn(Param(param_name, m.param_value)))
-                del self.ack_list[param_name]
-
             if not param_name in self.fetch_list:
                 self.fetch_list.append(param_name)
-                self.update_list.append(Param(param_name, m.param_value))
+
+            if param_name in self.ack_list:
+                self.send_msg(ParamSendReturn(Param(param_name, m.param_value)))
+                del self.ack_list[param_name]
+                return
+
+            self.send_msg(ParamUpdate(Param(param_name, m.param_value)))
 
     def idle_task(self):
         # Check if GUI has been closed
@@ -53,18 +57,24 @@ class paramGUI(mp_module.MPModule):
                 self.fetch_list = []
                 print "Fetching parameters"
 
-        # Send new parameters to GUI if available. Rate limited to one per second to stop GUI from freezing.
-        if len(self.update_list) > 0 and time.time() - self.last_param_send >= 1:
-            self.last_param_send = time.time()
-            self.gui.pipe_module.send(ParamUpdateList(self.update_list))
-            self.update_list = []
+        # Send new messages to GUI if available. Rate limited to one batch per second to stop GUI from freezing.
+        if len(self.send_list) > 0 and time.time() - self.last_send >= 1:
+            self.last_send = time.time()
+            self.gui.pipe_module.send(self.send_list)
+            self.send_list = []
 
         # Check for timed out parameters
         for param_name in self.ack_list:
             if time.time() - self.ack_list[param_name] >= self.timeout:
                 print param_name + " timed out."
                 del self.ack_list[param_name]
-                self.gui.pipe_module.send(ParamSendFail(param_name))
+                self.send_msg(ParamSendFail(param_name))
+
+    def send_msg(self, msg):
+        if isinstance(msg, list):
+            self.send_list += msg
+        else:
+            self.send_list.append(msg)
 
     def send_param(self, name, value):
         print "Send '{0}' with value '{1}'".format(name, value)

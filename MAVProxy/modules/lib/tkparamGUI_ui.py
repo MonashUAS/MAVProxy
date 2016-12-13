@@ -319,24 +319,37 @@ class ParamGUIFrame(tk.Frame):
             return
 
         # Get messages
+        gui_updated = False
         while self.state.pipe_gui.poll():
-            obj = self.state.pipe_gui.recv()
-            if isinstance(obj, ParamUpdateList):
-                for param in obj.params:
+            objs = self.state.pipe_gui.recv()
+            if not isinstance(objs, list):
+                objs = [objs]
+
+            for obj in objs:
+                if isinstance(obj, ParamUpdate):
+                    param = obj.param
                     if param.name in self.params:
                         if param.value != self.params[param.name]["value"]:
                             self.__set_status_tag(param.name, "new")
                             self.__update_param(param)
+                            gui_updated = True
                     else:
                         self.__new_param(param.name, param.value)
-            elif isinstance(obj, ParamSendReturn):
-                if obj.param.value == self.params[obj.param.name]["value"]:
-                    self.__set_status_tag(obj.param.name, "failed")
-                else:
-                    self.__set_status_tag(obj.param.name, "updated")
-                    self.__update_param(obj.param)
-            elif isinstance(obj, ParamSendFail):
-                self.__set_status_tag(obj.param_name, "failed")
+                        gui_updated = True
+
+                elif isinstance(obj, ParamSendReturn):
+                    gui_updated = True
+                    if obj.param.value == self.params[obj.param.name]["value"]:
+                        self.__set_status_tag(obj.param.name, "failed")
+                    else:
+                        self.__set_status_tag(obj.param.name, "updated")
+                        self.__update_param(obj.param)
+
+                elif isinstance(obj, ParamSendFail):
+                    gui_updated = True
+                    self.__set_status_tag(obj.param_name, "failed")
+
+        if gui_updated:
             self.__update()
         self.mainwindow.after(100, self.on_timer)
 
