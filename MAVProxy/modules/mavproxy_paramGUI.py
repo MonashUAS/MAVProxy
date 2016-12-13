@@ -14,7 +14,7 @@ class paramGUI(mp_module.MPModule):
         """Initialise module"""
         super(paramGUI, self).__init__(mpstate, "paramGUI", "Graphical Parameter Editor")
         self.mpstate = mpstate
-        self.gui = tkparamGUI.ParameterEditor(vehicle_name=self.vehicle_name, title='Parameter Editor')
+        self.gui = None
         self.param_file = os.path.join(self.logdir, "mav.parm")
         self.timeout = 3   # seconds
 
@@ -41,6 +41,12 @@ class paramGUI(mp_module.MPModule):
             self.send_msg(ParamUpdate(Param(param_name, m.param_value)))
 
     def idle_task(self):
+        # Wait for vehicle_name to be set before loading the gui
+        if self.gui == None:
+            if self.mpstate.vehicle_name != None:
+                self.gui = tkparamGUI.ParameterEditor(vehicle_name=self.vehicle_name, title='Parameter Editor')
+            return
+
         # Check if GUI has been closed
         if self.gui.close_event.wait(0.001):
             self.needs_unloading = True   # tell MAVProxy to unload this module
