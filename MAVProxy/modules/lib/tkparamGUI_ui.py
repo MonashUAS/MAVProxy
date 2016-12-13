@@ -268,7 +268,7 @@ class ParamGUIFrame(tk.Frame):
         new_val = self.etv.set(item, "value")
 
         # Parameter won't change instantly. So change after a small (1ms) delay.
-        set_cell_val = lambda val: self.mainwindow.after(1, lambda: self.etv.set(item, "value", str(val)))
+        set_cell_val = lambda val: self.mainwindow.after(1, lambda: self.etv.set(item, "value", self.__format_param(param_name, val)))
 
         if new_val == "":
             set_cell_val(self.params[param_name]["value"])
@@ -276,19 +276,19 @@ class ParamGUIFrame(tk.Frame):
             self.__update()
             return
 
-        new_val_float = None
+        new_val_formatted = ""
         try:
-            new_val_float = float(new_val)
+            new_val_formatted = self.__format_param(param_name, float(new_val))
         except ValueError:
             # User must have entered something that isn't a number
             set_cell_val(self.params[param_name]["value"])
             return
 
-        if str(new_val_float) != new_val:
+        if new_val_formatted != new_val:
             # User has entered a valid number, it just isn't formatted correctly
-            set_cell_val(new_val_float)
+            set_cell_val(float(new_val_formatted))
 
-        if new_val_float != self.params[param_name]["value"]:
+        if float(new_val_formatted) != self.params[param_name]["value"]:
             self.__set_status_tag(param_name, "staged")
         else:
             self.__clear_status_tag(param_name)
@@ -353,14 +353,35 @@ class ParamGUIFrame(tk.Frame):
             self.__update()
         self.mainwindow.after(100, self.on_timer)
 
+    def __format_param(self, name, value):
+        has_values = False
+        increment = None
+        if name in self.docs:
+            for child in self.docs[name]:
+                if child.tag == "field" and child.attrib["name"] == "Increment":
+                    increment = float(child.text)
+                elif child.tag == "values":
+                    has_values = True
+
+        if has_values and increment == None:
+            increment = 1.0
+
+        if increment == None:
+            return str(value)
+        elif increment%1 == 0:   # is an integer
+            return str(int(round(value)))
+        return str(round(value / increment) * increment)   # round to the nearest increment
+
     def __update_param(self, param):
-        self.params[param.name]["value"] = param.value
-        self.etv.set(self.params[param.name]["id"], "value", str(param.value))
+        value_formatted = self.__format_param(param.name, param.value)
+        self.params[param.name]["value"] = float(value_formatted)
+        self.etv.set(self.params[param.name]["id"], "value", value_formatted)
 
     def __new_param(self, name, value):
-        param_id = self.etv.insert("", "end", values=(name, str(value)))
+        value_formatted = self.__format_param(name, value)
+        param_id = self.etv.insert("", "end", values=(name, value_formatted))
         self.params[name] = {
-            "value": value,   # stores the last value received from the module
+            "value": float(value_formatted),   # stores the last value received from the module
             "id": param_id,
             "status": ""
         }
