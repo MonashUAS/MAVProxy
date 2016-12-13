@@ -13,6 +13,9 @@ class paramGUI(mp_module.MPModule):
     def __init__(self, mpstate):
         """Initialise module"""
         super(paramGUI, self).__init__(mpstate, "paramGUI", "Graphical Parameter Editor")
+        self.add_command('paramGUI', self.cmd_param, "graphical parameter editor",
+                         ["fav <set|add|remove> (PARAMETER_LIST)"])
+
         self.mpstate = mpstate
         self.gui = None
         self.param_file = os.path.join(self.logdir, "mav.parm")
@@ -20,6 +23,12 @@ class paramGUI(mp_module.MPModule):
 
         self.last_send = -1
         self.send_list = []
+
+        # Save favorites set in mpstate so it can be updated even when the module isn't loaded.
+        try:
+            self.send_msg(FavSet(self.mpstate.paramGUI_fav_set))
+        except AttributeError:
+            self.mpstate.paramGUI_fav_set = set()
 
         self.ack_list = {}
         self.fetch_list = [param_name for param_name in self.mav_param]
@@ -75,6 +84,32 @@ class paramGUI(mp_module.MPModule):
                 print param_name + " timed out."
                 del self.ack_list[param_name]
                 self.send_msg(ParamSendFail(param_name))
+
+    def cmd_param(self, args):
+        usage = "Usage: paramGUI <fav>"
+        if len(args) < 1:
+            print usage
+            return
+        if args[0] == "fav":
+            fav_usage = "Usage: paramGUI fav <set|add|remove> (PARAMETER_LIST)\nPARAMETER_LIST is a comma seperated list with no spaces (e.g. ARMING_CHECK,AHRS_ORIENTATION,ALT_MIX)"
+            if len(args) != 3:
+                print fav_usage
+                return
+
+            param_set = set([param.upper() for param in args[2].split(",")]) - set([""])
+            if args[1] == "set":
+                self.mpstate.paramGUI_fav_set = param_set
+            elif args[1] == "add":
+                self.mpstate.paramGUI_fav_set |= param_set
+            elif args[1] == "remove":
+                self.mpstate.paramGUI_fav_set -= param_set
+            else:
+                print fav_usage
+                return
+            
+            self.send_msg(FavSet(self.mpstate.paramGUI_fav_set))
+        else:
+            print usage
 
     def send_msg(self, msg):
         if isinstance(msg, list):

@@ -137,7 +137,8 @@ class ParamGUIFrame(tk.Frame):
         paddingFrame.pack(side="right", fill="y")
 
         # Radio buttons
-        self.__build_filter_list_button(self.frameFilter, "None", "none")
+        for fltr in ["none", "favorites"]:
+            self.__build_filter_list_button(self.frameFilter, fltr.title(), fltr)
         for status in self.status:
             self.__build_filter_list_button(self.frameFilter, status["name"].title(), status["name"], background=status["colour"])
         for fltr in filters:
@@ -149,6 +150,7 @@ class ParamGUIFrame(tk.Frame):
         self.params = {}
         self.filters = {}
         self.docs = {}
+        self.fav_set = set()
 
         xml_path = path = mp_util.dot_mavproxy("%s.xml" % self.state.vehicle_name)
         if not os.path.exists(xml_path):
@@ -187,6 +189,8 @@ class ParamGUIFrame(tk.Frame):
         fltr = self.filter.get()
         if fltr == "none":
             return True
+        if fltr == "favorites":
+            return param_name in self.fav_set
         if fltr in self.status_list:
             return fltr == self.params[param_name]["status"]
         return param_name in self.filters[fltr]
@@ -348,6 +352,10 @@ class ParamGUIFrame(tk.Frame):
                 elif isinstance(obj, ParamSendFail):
                     gui_updated = True
                     self.__set_status_tag(obj.param_name, "failed")
+
+                elif isinstance(obj, FavSet):
+                    gui_updated = True
+                    self.fav_set = obj.params
 
         if gui_updated:
             self.__update()

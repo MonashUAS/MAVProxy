@@ -35,6 +35,10 @@ class Param():
         self.name = name
         self.value = value
 
+class FavSet():
+    '''A set of parameters to be shown in the favorites list. Sent from module to GUI.'''
+    def __init__(self, params):
+        self.params = params
 
 ##### GUI Elements #####
 
