@@ -333,7 +333,7 @@ class ParamGUIFrame(tk.Frame):
                 if isinstance(obj, ParamUpdate):
                     param = obj.param
                     if param.name in self.params:
-                        if param.value != self.params[param.name]["value"]:
+                        if float(self.__format_param(param.name, param.value)) != self.params[param.name]["value"]:
                             self.__set_status_tag(param.name, "new")
                             self.__update_param(param)
                             gui_updated = True
