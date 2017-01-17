@@ -14,7 +14,7 @@ class paramGUI(mp_module.MPModule):
         """Initialise module"""
         super(paramGUI, self).__init__(mpstate, "paramGUI", "Graphical Parameter Editor")
         self.add_command('paramGUI', self.cmd_param, "graphical parameter editor",
-                         ["fav <set|add|remove> (PARAMETER_LIST)"])
+                         ["fav <set|add|remove> PARAM1 [PARAM2] [PARAM3] ..."])
 
         self.mpstate = mpstate
         self.gui = None
@@ -91,12 +91,12 @@ class paramGUI(mp_module.MPModule):
             print usage
             return
         if args[0] == "fav":
-            fav_usage = "Usage: paramGUI fav <set|add|remove> (PARAMETER_LIST)\nPARAMETER_LIST is a comma seperated list with no spaces (e.g. ARMING_CHECK,AHRS_ORIENTATION,ALT_MIX)"
-            if len(args) != 3:
+            fav_usage = "Usage: paramGUI fav <set|add|remove> PARAM1 [PARAM2] [PARAM3] ..."
+            if len(args) < 3:
                 print fav_usage
                 return
 
-            param_set = set([param.upper() for param in args[2].split(",")]) - set([""])
+            param_set = set([param.upper() for param in args[2:]]) - set([""])
             if args[1] == "set":
                 self.mpstate.paramGUI_fav_set = param_set
             elif args[1] == "add":
@@ -126,10 +126,6 @@ class paramGUI(mp_module.MPModule):
     def unload(self):
         '''unload module'''
         self.gui.close()
-
-    def usage(self):
-        '''show help on command line options'''
-        return "Usage: "
 
 def init(mpstate):
     '''initialise module'''

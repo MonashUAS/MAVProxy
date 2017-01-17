@@ -51,6 +51,8 @@ class ScrollableFrame(tk.Frame):
 
     	# Outer frame
     	self.__frameOuter = tk.Frame(master=master, *args, **kw)
+        self.__frameOuter.bind_class(self.__scroll_tag, "<Button-4>", self.__on_scrollwheel_up)
+    	self.__frameOuter.bind_class(self.__scroll_tag, "<Button-5>", self.__on_scrollwheel_down)
 
     	# Canvas
     	self.__canvas = tk.Canvas(master=self.__frameOuter, bd=0, highlightthickness=0, height=0, width=0)
@@ -114,5 +116,3 @@ class ScrollableFrame(tk.Frame):
     # Must be run when the contents of the inner frame is changed
     def __bind_scrollwheel(self):
     	self.__tag_widget(self.__canvas)
-    	self.__frameOuter.bind_class(self.__scroll_tag, "<Button-4>", self.__on_scrollwheel_up)
-    	self.__frameOuter.bind_class(self.__scroll_tag, "<Button-5>", self.__on_scrollwheel_down)
